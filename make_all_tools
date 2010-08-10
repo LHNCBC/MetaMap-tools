@@ -1,0 +1,23 @@
+#!/bin/sh
+
+cd $HOME/specialist/SKR/tools.SICStus
+
+MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sort`
+
+for DIR in $MAKE_DIRS
+do
+   cd $DIR
+
+   echo '################################################################'
+   echo making in directory $DIR
+   echo '################################################################'
+
+   linkSICStus -P
+   echo '################################################################'
+   echo running xref in directory $DIR
+   echo '################################################################'
+   echo y | SKRenv.09 -S spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module
+
+   cd ..
+done
+

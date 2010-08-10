@@ -1,0 +1,12 @@
+#!/bin/sh
+
+ARCHITECTURE=`uname`
+
+for FILE in */a.out.$ARCHITECTURE
+do
+   BINARY=`echo $FILE | sed -e 's@/a.out@.BINARY@'`
+   ls -l $FILE
+   ls -l /nfsvol/nls/bin/$BINARY
+   /bin/cp -p $FILE /nfsvol/nls/bin/$BINARY
+   echo 
+done
