@@ -167,11 +167,11 @@ parse_line/6 extracts CUI, TS, LUI, SUI and LCString from Line. */
 parse_line(Line, CUIAtom, TSAtom, LUIAtom, SUIAtom, LCAtom) :-
 	( split_string_completely(Line, "|",
 				  [CUIString,_,TSString,LUIString,_,SUIString,_,_,LCString]) ->
-	  atom_chars(CUIAtom, CUIString),
-	  atom_chars(TSAtom,  TSString),
-	  atom_chars(LUIAtom, LUIString),
-	  atom_chars(SUIAtom, SUIString),
-	  atom_chars(LCAtom,  LCString)
+	  atom_codes(CUIAtom, CUIString),
+	  atom_codes(TSAtom,  TSString),
+	  atom_codes(LUIAtom, LUIString),
+	  atom_codes(SUIAtom, SUIString),
+	  atom_codes(LCAtom,  LCString)
 	; format(user_output, '~NFatal error: Bad input ~s~n', [Line]),
 	  ttyflush,
 	  halt

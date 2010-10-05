@@ -71,8 +71,7 @@
     ]).
 
 :- use_module(skr_lib(nls_io),[
-	fget_line/2,
-	get_line/2
+	fget_line/2
     ]).
 
 :- use_module(skr_lib(sicstus_utils),[
@@ -284,7 +283,9 @@ fget_non_null_line/2 reads lines from Stream until it encounters a non-null
 one, Line.  It fails at end-of-file.  */
 
 fget_non_null_line(Stream, Line) :-
-	\+ at_end_of_stream(Stream),
+	% \+ at_end_of_stream(Stream),
+	peek_code(Stream, Code),
+	Code =:= -1,
 	!,
 	fget_line(Stream, Line0),
 	( Line0 == "" ->
@@ -300,15 +301,6 @@ FileName, Qualifier and PID (process ID).  */
 compute_unique_filename(FileName, Qualifier, UniqueFileName) :-
 	process_id(PID),
 	concatenate_items_to_atom([FileName,".",Qualifier,".",PID], UniqueFileName).
-
-/* get_line_to_strings(-Strings)
-Form list of strings from the results of calling get_line/2. */
-
-get_line_to_strings([String|Rest]) :-
-	get_line(String, Terminator),
-	\+ is_endfile(Terminator),
-	get_line_to_strings(Rest).
-get_line_to_strings([]).
 
 /*    remove_possessives(+UTokensIn, -UTokensOut)
 

@@ -123,7 +123,7 @@ initialize_glean_mrcon(Options, Args, InterpretedArgs) :-
 	toggle_control_options(IOptions),
 	set_control_values(IOptions, InterpretedArgs),
 	default_full_year(FullYear),
-	display_current_control_options(glran_mrcon, FullYear),
+	display_current_control_options(glean_mrcon, FullYear),
 	!.
 
 
@@ -199,11 +199,13 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
 		GenerateCUIs, GenerateStrings, GenerateWords,
 		NumLinesProcessed,
 		InputStream, WordOutputStream, SUIOutputStream, CUIOutputStream) :-
-	( at_end_of_stream(InputStream) ->
+	% ( at_end_of_stream(InputStream) ->
+	( peek_code(InputStream, Code),
+	  Code =:= -1 ->
 	  true
 	; fget_line(InputStream, Line) ->
 	  do_housekeeping(1000, StartTime, NumLinesProcessed, Line),
-	  % atom_chars(LineAtom, Line),
+	  % atom_codes(LineAtom, Line),
 	  % format(user_output, 'LINE ~d: ~w~n', [NumLinesProcessed, LineAtom]),
           split_string_completely(Line, "|",
 				  [CUI0,_Language,TermStatus,_LUI,StringType,SUI,String|_]),
@@ -242,20 +244,22 @@ read_filter_info/1 reads lines of the form <word1>|<word2> from FilterStream
 and stores them in filter_info/2, a factual predicate. */
 
 read_filter_info(FilterStream, WordPairs) :-
-	( at_end_of_stream(FilterStream) ->
+	% ( at_end_of_stream(InputStream) ->
+	( peek_code(FilterStream, Code),
+	  Code =:= -1 ->
 	  WordPairs = []
 	; fget_line(FilterStream, Line) ->
 	  split_string_completely(Line, "|", SplitLine),
 	  ( SplitLine = [Word1String,Word2String] ->
-	    atom_chars(Word1Atom, Word1String),
-	    atom_chars(Word2Atom, Word2String),
+	    atom_codes(Word1Atom, Word1String),
+	    atom_codes(Word2Atom, Word2String),
 	    WordPairs = [Word1Atom-Word2Atom|RestWordPairs],
 	    read_filter_info(FilterStream,  RestWordPairs)
             % assert(filter_info(Word1,Word2))
           ; format('~NERROR: Illegal filter information: ~p~n',[Line]),
             halt
 	  )
-	; format('~NERROR: fter_line/2 failed.', []),
+	; format('~NERROR: fget_line/2 failed.', []),
 	  halt
 	).
 
@@ -281,9 +285,9 @@ and Word-Word2 is a member of WordPairs is true. */
 
 is_filtered_out(WordList) :-
 	WordList = [Word1String|_],
-	last(Word2String, WordList),
-	atom_chars(Word1Atom, Word1String),
-	atom_chars(Word2Atom, Word2String),
+	last(WordList, Word2String),
+	atom_codes(Word1Atom, Word1String),
+	atom_codes(Word2Atom, Word2String),
 	filter_pair(Word1Atom, Word2Atom).
 
 /* write_words(+GenerateWords, +Words, +I, +N, +SUI, +CUI, +WordOutputStream)

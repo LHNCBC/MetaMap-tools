@@ -4,8 +4,7 @@
 % Purpose:  Specialist parser component.
 
 :- module(reader, [ % exported predicates
-      input_text/2,
-      askmore/4
+      input_text/2
       ]).
 
 
@@ -16,10 +15,6 @@
 	erase_fact/3,
 	get_fact/3,
 	put_fact/3
-   ]).
-
-:- use_module(skr_lib(nls_io), [
-	get_line/1
    ]).
 
 :- use_module(skr_lib(sicstus_utils),[
@@ -424,30 +419,6 @@ is_a_single_character_token('"').  % "  %%% FML added this for opreps
 terminalWord('.').
 terminalWord('?').
 terminalWord('!').
-
-
-% LRA--moved askmore/3, to_upper_ascii/2, upper_case_word/2 and
-% LRA  word_to_upper_ascii/2 from selection_utilities.pl.
-
-askmore(Answer, NewPrompt, PossibleAnswers, ErrorMessage) :-
-        repeat,
-	get_line(L),
-        prompt(_,NewPrompt),
-        L \== [],
-        L=[C|_],
-%        prompt(_,''),
-%	inflush,
-%        prompt(_,NewPrompt),
-	( inl(C,PossibleAnswers), Answer = C, !
-	; write(ErrorMessage),ttyflush,prompt(_,''),
-	  askmore(Answer,NewPrompt,PossibleAnswers,ErrorMessage)
-	),
-        !.
-
-
-inl(X,[X|_]):- ! .
-inl(X,[_|Y]):-inl(X,Y).
- 
 
 % to_upper_ascii(+AsciiChar, ?AsciiUpperCaseChar) takes an ASCII value
 % and converts it to upper case if it's a lower case letter

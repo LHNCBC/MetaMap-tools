@@ -204,7 +204,7 @@ process_text/1 finds and writes variants of the labelled term Text.  */
 process_text(Text) :-
     parse_input(Text,_Label0,Term0),
     Term0\=="",
-    atom_chars(Term,Term0),
+    atom_codes(Term,Term0),
     current_output(CurrentOutput),
     flush_output(CurrentOutput),
 %    (CurrentOutput==user_output ->

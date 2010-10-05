@@ -250,7 +250,7 @@ tokenize_text_lc(Text,TokText) :-
 
 tokenize_text_completely(Text,TokText) :-
     (   atom(Text) ->
-        atom_chars(Text,String),
+        atom_codes(Text,String),
         phrase(ttc_string(TokString),String),
         atom_codes_list(TokText,TokString)
 %    ;   is_print_string(Text) ->

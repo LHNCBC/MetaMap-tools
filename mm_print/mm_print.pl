@@ -262,7 +262,9 @@ get_all_utterances(InputStream, OutputStream, [Utterance|RestUtterances], NextTe
 	get_rest_utterances(InputStream, OutputStream, RestUtterances, NextTerm).
 
 get_rest_utterances(InputStream, OutputStream, Utterances, NextTerm) :-
-	( at_end_of_stream(InputStream) ->
+	% ( at_end_of_stream(InputStream) ->
+	( peek_code(InputStream, Code),
+	  Code =:= -1 ->
 	  NextTerm = end_of_file,
 	  Utterances = []
 	; get_one_utterance(InputStream, OutputStream, Utterance),
@@ -280,7 +282,7 @@ get_rest_utterances(InputStream, OutputStream, Utterances, NextTerm) :-
 read_stop_phrases(StopPhraseStream) :-
 	repeat,
 	( fget_line(StopPhraseStream, Line) ->
-	  atom_chars(StopPhrase, Line),
+	  atom_codes(StopPhrase, Line),
 	  assert(stop_phrase(StopPhrase)),
 	  fail
 	; true
@@ -533,14 +535,14 @@ non-alphanumeric characters, e.g., ')', ').' or ':'. */
 % filter_alnum_phrases([phrase(Text,Syntax,Candidates,Mappings,PosInfo,ReplPos)|Rest],
 % 		     [phrase(Text,Syntax,Candidates,Mappings,PosInfo,ReplPos)
 % 		     |FilteredRest]) :-
-%     atom_chars(Text,String),
+%     atom_codes(Text,String),
 %     string_contains_alnum(String),
 %     !,
 %     filter_alnum_phrases(Rest,FilteredRest).
 % phrase/4 retrofit
 filter_alnum_phrases([phrase(Text,Syntax,Candidates,Mappings,PosInfo,ReplPos)|Rest],
 		     [phrase(Text,Syntax,Candidates,Mappings,PosInfo,ReplPos)|FilteredRest]) :-
-    atom_chars(Text,String),
+    atom_codes(Text,String),
     string_contains_alnum(String),
     !,
     filter_alnum_phrases(Rest,FilteredRest).
@@ -679,7 +681,7 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 %    ;   Candidates1=Candidates0
 %    ),
 %    filter_out_duplicate_concepts(Candidates1,Candidates2),
-%    atom_chars(Atom,String),
+%    atom_codes(Atom,String),
 %    split_text(Label,'.',CUI,_),
 %    filter_out_input_concept(Candidates2,Atom,CUI,Candidates),
 %    (Candidates == [] ->
@@ -703,7 +705,7 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 %    ;   Candidates1=Candidates0
 %    ),
 %    filter_out_duplicate_concepts(Candidates1,Candidates2),
-%    atom_chars(Atom,String),
+%    atom_codes(Atom,String),
 %    compute_meta_cuis(Atom,CUIs),
 %    filter_out_input_concept2(Candidates2,Atom,CUIs,Candidates),
 %    split_text(Label,'.',SY_ID,RestLabel),
@@ -722,7 +724,7 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 %              OutputStream) :-
 %    control_option(phrase_specificity_dump),
 %    !,
-%    (atom_chars(Text,String) ->
+%    (atom_codes(Text,String) ->
 %        true
 %    ;   format('WARNING: "~a" does not exhaust ~a.~n',
 %               [Text,Label])
@@ -924,7 +926,7 @@ print_syntactic_pattern([First|Rest],Text,OutputStream) :-
 % 	   ).
 % 
 % is_stop_phrase_string(String) :-
-% 	atom_chars(Atom, String),
+% 	atom_codes(Atom, String),
 % 	lower(Atom, LCAtom),
 % 	stop_phrase(LCAtom),
 % 	!.
@@ -1062,9 +1064,9 @@ normalize_meta_string/2
 */
 
 normalize_meta_text(Atom,NMAtom) :-
-    atom_chars(Atom,String),
+    atom_codes(Atom,String),
     normalize_meta_string(String,NMString),
-    atom_chars(NMAtom,NMString).
+    atom_codes(NMAtom,NMString).
 
 % see specialist:mwi_utilities
 %normalize_meta_string(STR,NMSTR) :-
@@ -1332,7 +1334,7 @@ xxx
 %compute_each_specificity_from_codes([],[]).
 %compute_each_specificity_from_codes([First|Rest],
 %                                    [FirstSpecificity|RestSpecificities]) :-
-%    atom_chars(First,String),
+%    atom_codes(First,String),
 %    split_string_completely(String,".",Strings),
 %    length(Strings,FirstSpecificity),
 %    compute_each_specificity_from_codes(Rest,RestSpecificities).
@@ -1344,7 +1346,7 @@ xxx
 
 %compute_specificity_from_text(Text,WSpecificity,CSpecificity) :-
 %    !,
-%    atom_chars(Text,String),
+%    atom_codes(Text,String),
 %    length(String,CSpecificity),
 %    split_string_completely(String," ",Tokens),
 %    length(Tokens,WSpecificity).
@@ -1575,10 +1577,10 @@ append_text/3 is analogous to append/3 for text (atoms) except that at least
 one of its arguments MUST be instantiated. */
 
 append_text(Text1, Text2, Text) :-
-	atom_chars(Text1, S1),
-	atom_chars(Text2, S2),
+	atom_codes(Text1, S1),
+	atom_codes(Text2, S2),
 	append(S1, S2, S),
-	atom_chars(Text, S).
+	atom_codes(Text, S).
 
 
 
@@ -1601,7 +1603,9 @@ print_mappings_aux([map(NegValue,Mapping)|Rest],Label,OutputStream) :-
 fread_term/2 reads a Term from Stream.  It fails at end-of-file.  */
 
 fread_term(Stream, Term) :-
-	\+ at_end_of_stream(Stream),
+	% \+ at_end_of_stream(Stream),
+	peek_code(Stream, Code),
+	Code =\= -1,
 	read(Stream, Term),
 	\+ Term == end_of_file.
 
