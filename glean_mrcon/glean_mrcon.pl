@@ -271,6 +271,7 @@ write_filter_info(WordPairs) :-
 	write_all_pairs(WordPairs, FilterStream),
 	close(FilterStream),
 	format(user_output, 'Compiling file ~w~n', [FilterFile]),
+	% abolish(filter_pair/2, [force(true)]),
 	compile(FilterFile).	
 
 write_all_pairs([], _FilterStream).
@@ -399,5 +400,5 @@ generate_string_output(GenerateStrings, SUIOutputStream, SUI, NormalizedString, 
 
 % This stub definition is just to fake out the compiler,
 % and will be overridden when filter_pairs.pl is compiled.
-filter_pair('', '').
+% filter_pair('', '').
 

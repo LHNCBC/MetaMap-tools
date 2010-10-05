@@ -1,0 +1,12 @@
+filter_pair('2',acid).
+filter_pair(arabidopsis,protein).
+filter_pair(c,protein).
+filter_pair(drosophila,protein).
+filter_pair(e,protein).
+filter_pair(human,'1').
+filter_pair(human,protein).
+filter_pair(mouse,protein).
+filter_pair(rat,protein).
+filter_pair(skin,hand).
+filter_pair(solution,injection).
+filter_pair(s,protein).
