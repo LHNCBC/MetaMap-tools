@@ -271,8 +271,38 @@ write_filter_info(WordPairs) :-
 	write_all_pairs(WordPairs, FilterStream),
 	close(FilterStream),
 	format(user_output, 'Compiling file ~w~n', [FilterFile]),
-	% abolish(filter_pair/2, [force(true)]),
+	maybe_abolish_filter_pair(WordPairs),
 	compile(FilterFile).	
+
+% This is ugly, but it works.
+% The predicate filter_pair/2 is a static predicate defined via a stub
+% at the very end of this file. The filter file is either
+% * the empty (i.e., zero-length) file 0filter.0 or
+% * the non-empty file 0filter.1, which contains lines like
+% 2|acid
+% arabidopsis|protein
+% c|proteinf
+% drosophila|protein
+% e|protein
+% human|1
+% human|protein
+
+% If the filter file is empty, we keep the static stub definition of filter_pair/2
+% at the end of this file. However, if the filter file contains data, we must
+%  * abolish that stub definition of filter_pair/2,
+%  * create a new definition of filter_pair/2, e.g.,
+% filter_pair('2',acid).
+% filter_pair(arabidopsis,protein).
+% filter_pair(c,protein).
+% filter_pair(drosophila,protein).
+% filter_pair(e,protein).
+% filter_pair(human,'1').
+% filter_pair(human,protein).
+%  * and compile that file.
+
+
+maybe_abolish_filter_pair([]).
+maybe_abolish_filter_pair([_|_])  :- abolish(filter_pair/2, [force(true)]).
 
 write_all_pairs([], _FilterStream).
 write_all_pairs([Word1-Word2|RestWords], FilterStream) :-
@@ -400,5 +430,4 @@ generate_string_output(GenerateStrings, SUIOutputStream, SUI, NormalizedString, 
 
 % This stub definition is just to fake out the compiler,
 % and will be overridden when filter_pairs.pl is compiled.
-% filter_pair('', '').
-
+filter_pair('', '').
