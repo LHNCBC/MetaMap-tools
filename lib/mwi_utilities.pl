@@ -285,6 +285,7 @@ one, Line.  It fails at end-of-file.  */
 fget_non_null_line(Stream, Line) :-
 	% \+ at_end_of_stream(Stream),
 	peek_code(Stream, Code),
+	% This needs to be =\= and not =:=!!
 	Code =\= -1,
 	!,
 	fget_line(Stream, Line0),
