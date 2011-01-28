@@ -14,6 +14,10 @@
 	initialize_db_access/0
     ]).
 
+:- use_module(skr(skr_xml),[
+	xml_output_format/1
+    ]).
+
 :- use_module(metamap(metamap_utilities),[
 	build_concept_name_1/4,
 	dump_evaluations_indented/2
@@ -96,7 +100,9 @@
     ]).
 
 :- use_module(skr_lib(ctypes),[
-	is_alnum/1
+	is_alnum/1,
+	is_newline/1,
+	is_white/1
     ]).
 
 :- use_module(skr_lib(nls_io),[
@@ -139,7 +145,7 @@ go(HaltOption) :-
     go(HaltOption,CLTerm).
 
 go(HaltOption,command_line(Options,Args)) :-
-    use_module(library(printchars)),
+    use_module(skr_lib(print_chars)),
     reset_control_options(mm_print),
     (initialize_mm_print(Options,Args,InterpretedArgs) ->
         (mm_print(InterpretedArgs); true)
@@ -263,7 +269,8 @@ get_all_utterances(InputStream, OutputStream, [Utterance|RestUtterances], NextTe
 
 get_rest_utterances(InputStream, OutputStream, Utterances, NextTerm) :-
 	% ( at_end_of_stream(InputStream) ->
-	( peek_code(InputStream, Code),
+	% ( peek_code(InputStream, Code),
+    	( peek_past_whitespace(InputStream, Code),
 	  Code =:= -1 ->
 	  NextTerm = end_of_file,
 	  Utterances = []
@@ -277,6 +284,20 @@ get_rest_utterances(InputStream, OutputStream, Utterances, NextTerm) :-
 	  ; Utterances = [Utterance|RestUtterances],
 	    get_rest_utterances(InputStream, OutputStream, RestUtterances, NextTerm)
 	  )
+	).
+
+peek_past_whitespace(InputStream, Code) :-
+	peek_code(InputStream, NextCode),
+	( is_whitespace(NextCode) ->
+	  get_code(InputStream, NextCode),
+	  peek_past_whitespace(InputStream, Code)
+	; Code is NextCode
+	).	    
+
+is_whitespace(Code) :-
+	( is_white(Code) ->
+	  true
+	; is_newline(Code)
 	).
 
 read_stop_phrases(StopPhraseStream) :-
@@ -441,7 +462,7 @@ do_organize_semantic_types(OutputStream) :-
 	).
 
 print_utterance(_Utterance, _OutputStream) :-
-	control_option('XML'),
+	xml_output_format(_XMLOutputFormat),
 	!.
 print_utterance(utterance(Label,String,_Phrases,_PosInfo,_ReplPos), OutputStream) :-
 	control_option(label_text_field_dump),

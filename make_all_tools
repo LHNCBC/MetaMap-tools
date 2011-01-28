@@ -16,7 +16,7 @@ do
    echo '################################################################'
    echo running xref in directory $DIR
    echo '################################################################'
-   echo y | SKRenv.10 -S spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module
+   echo y | SKRenv.10 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module
 
    cd ..
 done

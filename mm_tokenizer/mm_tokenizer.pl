@@ -156,6 +156,8 @@ mm_tokenizer(InterpretedArgs) :-
     format('~n~nBeginning to process ~a sending output to ~a.~n~n',
            [InputFile,OutputFile]),
     process_all(InputStream,OutputStream),
+    close(InputStream),
+    close(OutputStream),
     format('~nBatch processing is finished.~n',[]).
 mm_tokenizer(_InterpretedArgs).
 
@@ -236,13 +238,15 @@ write_tokens(Tokens0,Text,OutputStream) :-
     write_term(OutputStream,Tokens,[quoted(true),portrayed(true)]),
     format(OutputStream,'.~n',[]).
 
-write_each_token([],_,_).
-write_each_token([Token|Rest],Text,OutputStream) :-
-    (control_option(brief_output) ->
-	format(OutputStream,'~s~n',[Token])
-    ;   format(OutputStream,'~s|~s~n',[Text,Token])
-    ),
-    write_each_token(Rest,Text,OutputStream).
+write_each_token([], _, _).
+write_each_token([Token|Rest], Text, OutputStream) :-
+	( control_option(brief_output) ->
+	  format(OutputStream,'~s~n' ,[Token])
+	; format(OutputStream, '~s|~s~n', [Text,Token])
+	),
+	flush_output(OutputStream),
+	write_each_token(Rest, Text, OutputStream).
+
 
 tokenize_text_lc(Text,TokText) :-
     tokenize_text(Text,TokText0),
