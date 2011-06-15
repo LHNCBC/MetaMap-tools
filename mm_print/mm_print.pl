@@ -10,14 +10,6 @@
 	stop_mm_print/0
    ]).
 
-:- use_module(skr_db(db_access),[
-	initialize_db_access/0
-    ]).
-
-:- use_module(skr(skr_xml),[
-	xml_output_format/1
-    ]).
-
 :- use_module(metamap(metamap_utilities),[
 	build_concept_name_1/4,
 	dump_evaluations_indented/2
@@ -43,6 +35,7 @@
 :- use_module(skr_db(db_access),[
 	default_full_year/1,
 	db_get_cui_sources/2,
+	initialize_db_access/0,
 	stop_db_access/0
     ]).
 
@@ -83,7 +76,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation10),[
+:- use_module(skr_lib(semtype_translation_2011AA),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).
@@ -96,6 +89,7 @@
 	generate_and_print_xml/1,
 	conditionally_print_xml_footer/3,
 	conditionally_print_xml_header/2,
+	xml_output_format/1,
 	xml_header_footer_print_setting/3
     ]).
 
@@ -108,6 +102,8 @@
 :- use_module(skr_lib(nls_io),[
 	fget_line/2
     ]).
+
+:- use_module(skr_lib(print_chars)).
 
 :- use_module(skr_lib(sicstus_utils),[
        	lower/2
@@ -145,7 +141,6 @@ go(HaltOption) :-
     go(HaltOption,CLTerm).
 
 go(HaltOption,command_line(Options,Args)) :-
-    use_module(skr_lib(print_chars)),
     reset_control_options(mm_print),
     (initialize_mm_print(Options,Args,InterpretedArgs) ->
         (mm_print(InterpretedArgs); true)
