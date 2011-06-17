@@ -30,11 +30,6 @@
 	tokenize_text_utterly/2
     ]).
 
-:- use_module(skr_db(db_access),[
-	default_year/1
-   ]).
-
-
 :- use_module(skr_lib(consulttt),[
 	consult_tagged_text/5
    ]).

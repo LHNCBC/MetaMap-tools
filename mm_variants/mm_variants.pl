@@ -39,7 +39,7 @@
     ]).
 
 :- use_module(skr_db(db_access),[
-	default_full_year/1,
+	default_release/1,
 	initialize_db_access/0,
 	stop_db_access/0
     ]).
@@ -124,8 +124,8 @@ initialize_mm_variants(Options,Args,IArgs) :-
     interpret_args(IOptions,ArgSpecs,Args,IArgs),
     toggle_control_options(IOptions),
     set_control_values(IOptions,IArgs),
-    default_full_year(FullYear),
-    display_current_control_options(mm_variants, FullYear),
+    default_release(Release),
+    display_current_control_options(mm_variants, Release),
     initialize_mm_variants,
     !.
 
@@ -168,7 +168,7 @@ mm_variants(InterpretedArgs) :-
     put_fact(input,file,InputFile),  % for reader:input_text/2's benefit
     current_output(SavedCurrentOutput),
     set_output(OutputStream),
-    process_all,
+    process_all(0),
     (control_option(end_of_processing) ->
 	format(OutputStream,'<<< EOT >>>~n',[])
     ;   true
@@ -181,20 +181,29 @@ mm_variants(InterpretedArgs) :-
 mm_variants(_InterpretedArgs).
 
 
-/* process_all
+/* process_all/1
 
-process_all/0 reads labelled terms from user_input and writes variants
+process_all// reads labelled terms from user_input and writes variants
 onto user_output.  (user_input and user_output have been redirected to
 files.)  */
 
-process_all :-
-    repeat,
-    ((input_text(sentence,ListOfAscii), ListOfAscii\=="") ->
-        process_text(ListOfAscii),
-        fail
-    ;   true
-    ),
-    !.
+process_all(NumLines) :-
+	% input_text(sentence, ListOfAscii),
+	read_line(ListOfAscii),
+	(  ListOfAscii == end_of_file ->
+	   true
+	;  NumLines1 is NumLines + 1,
+	   maybe_announce_progress(NumLines1),
+	   process_text(ListOfAscii),
+	   process_all(NumLines1)
+	; true
+	).
+
+maybe_announce_progress(NumLines) :-
+	( NumLines rem 1000 =:= 0 ->
+	  format(user_output, 'Processed ~d lines.~n', [NumLines])
+	; true
+	).
 
 
 /* process_text(+Text)
@@ -202,9 +211,8 @@ process_all :-
 process_text/1 finds and writes variants of the labelled term Text.  */
 
 process_text(Text) :-
-    parse_input(Text,_Label0,Term0),
-    Term0\=="",
-    atom_codes(Term,Term0),
+    Text\=="",
+    atom_codes(Term,Text),
     current_output(CurrentOutput),
     flush_output(CurrentOutput),
 %    (CurrentOutput==user_output ->
@@ -220,36 +228,6 @@ process_text(Text) :-
     compute_and_write_variants(Term),
     !.
 
-% parse_input/3 parses InputString into LabelString and TextString.  
-% InputString is of the form <label><text> where <label> is optional 
-% and each can be preceded by blanks.  parse_input/3 originated in 
-% the phrase extractor.
-
-parse_input(InputString,LabelString,TextString) :-
-    phrase(r_labelled_text([LabelString,TextString]),InputString).
-
-% ---------- GRAMMAR FOR LABELLED TEXT 
-
-r_labelled_text(LT) --> ([0' ], !, r_labelled_text(LT)
-                    ;    r_label(L), r_text(T), {LT=[L,T]}
-                    ;    r_text(T), {LT=[[],T]}
-                        ), !.
-
-r_label(L) --> [0'[], r_non_r_bracket(L), [0']].
-
-r_text(T) --> ([0' ], !, r_text(T)
-          ;    r_any(T)
-              ), !.
-
-r_non_r_bracket(S) --> ([Char], {\+Char==0']}, r_non_r_bracket(T), {S=[Char|T]}
-                   ;    {S=[]}
-                       ), !.
-
-r_any(S) --> ([Char], r_any(T), {S=[Char|T]}
-         ;    {S=[]}
-             ), !.
-
-
 /* compute_and_write_variants(+Term)
    compute_and_write_variants(+SplitCategories, +Term)
 
@@ -258,55 +236,51 @@ of Term by computing its categories which are split into SplitCategories and
 passed on to augment_GVCs_with_variants/1.  */
 
 compute_and_write_variants(Term) :-
-% temp
-%format('~a|0~n',[Term]),
-    (is_a_form(Term) ->
-        true
-    ;   format(user_output,'WARNING: is_a_form/1 failed for ~p.~n',
-               [Term])
-    ),
-    (get_categories_for_form(Term,Categories) ->
-        true
-    ;   Categories=[]
-    ),
-    split_categories(Categories,SplitCategories),
-% temp
-%format('~a|1|~p~n',[Term,SplitCategories]),
-    compute_and_write_variants(SplitCategories,Term).
-compute_and_write_variants(Term) :-
-    format(user_output,'ERROR: compute_and_write_variants/1 failed for ~p.~n',
-           [Term]),
-    fail.
+	( is_a_form(Term) ->
+	  compute_and_write_variants_aux(Term)
+	; true
+	% suppress this warning message
+	% ; format(user_output,'WARNING: is_a_form/1 failed for ~p.~n', [Term])
+	).
 
-split_categories([],[[]]) :- !.
-split_categories(Categories,SplitCategories) :-
-    split_categories_aux(Categories,SplitCategories).
+compute_and_write_variants_aux(Term) :-
+	( get_categories_for_form(Term,Categories) ->
+	  true
+	; Categories = []
+	),
+	split_categories(Categories, SplitCategories),
+	compute_and_write_variants_2(SplitCategories, Term),
+	!.
+compute_and_write_variants_aux(Term) :-
+	format(user_output, 'ERROR: compute_and_write_variants/1 failed for ~p.~n', [Term]),
+	fail.
 
-split_categories_aux([],[]) :- !.
-split_categories_aux([First|Rest],[[First]|SplitRest]) :-
-    split_categories_aux(Rest,SplitRest).
+split_categories([], [[]]).
+split_categories([H|T], SplitCategories) :-
+	split_categories_aux([H|T], SplitCategories).
 
-compute_and_write_variants([],_).
-compute_and_write_variants([Categories|RestCategories],Term) :-
-    maybe_atom_gc(DidGC,SpaceCollected),
-    ((control_option(info), DidGC==yes) ->
-        format('Atom GC performed collecting ~d bytes.~n',[SpaceCollected])
-    ;   true
-    ),
-% temp
-%format('~a|2|~p~n',[Term,Categories]),
-    GVCs=[gvc(v(Term,Categories,0,"",_,_),_,_)],
-    augment_GVCs_with_variants(GVCs),
-    GVCs=[gvc(_,Variants,_)],
-% temp
-%format('~a|3|~p~n',[Term,Variants]),
-    simplify_categories(Categories,SimplifiedCats),
-    write_variants(Term,SimplifiedCats,Variants),
-    compute_and_write_variants(RestCategories,Term),
-    !.
-compute_and_write_variants(Categories,Term) :-
-    format('ERROR: compute_and_write_variants/2 failed for ~p  ~p~n',
-           [Categories,Term]).
+split_categories_aux([], []).
+split_categories_aux([First|Rest], [[First]|SplitRest]) :-
+	split_categories_aux(Rest, SplitRest).
+
+compute_and_write_variants_2([],_).
+compute_and_write_variants_2([Categories|RestCategories], Term) :-
+	maybe_atom_gc(DidGC, SpaceCollected),
+	( ( control_option(info),
+	    DidGC == yes) ->
+	    format('Atom GC performed collecting ~d bytes.~n', [SpaceCollected])
+	; true
+	),
+	GVCs = [gvc(v(Term,Categories,0,"",_,_),_,_)],
+        % format(user_output, 'Augmenting ~q~n', [GVCs]),
+	augment_GVCs_with_variants(GVCs),
+	GVCs = [gvc(_,Variants,_)],
+	simplify_categories(Categories, SimplifiedCats),
+	write_variants(Term, SimplifiedCats, Variants),
+	compute_and_write_variants_2(RestCategories,Term),
+	!.
+compute_and_write_variants_2(Categories, Term) :-
+	format('ERROR: compute_and_write_variants_2/2 failed for ~p  ~p~n', [Categories,Term]).
 
 
 /* write_variants(+Term, +SimplifiedTermCats, +Variants)

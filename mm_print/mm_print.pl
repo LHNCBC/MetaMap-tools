@@ -33,8 +33,8 @@
     ]).
 
 :- use_module(skr_db(db_access),[
-	default_full_year/1,
 	db_get_cui_sources/2,
+	default_release/1,
 	initialize_db_access/0,
 	stop_db_access/0
     ]).
@@ -151,7 +151,6 @@ go(HaltOption,command_line(Options,Args)) :-
     ;   true
     ).
 
-
 initialize_mm_print(Options,Args,IArgs) :-
     retractall(stop_phrase(_)),
     retractall(saved_results(_)),
@@ -166,8 +165,8 @@ initialize_mm_print(Options,Args,IArgs) :-
     interpret_args(IOptions,ArgSpec,Args,IArgs),
     toggle_control_options(IOptions),
     set_control_values(IOptions,IArgs),
-    default_full_year(FullYear),
-    display_current_control_options(mm_print, FullYear),
+    default_release(Release),
+    display_current_control_options(mm_print, Release),
     initialize_mm_print,
     !.
 

@@ -48,7 +48,7 @@
     ]).
 
 :- use_module(skr_db(db_access),[
-	default_full_year/1
+	default_release/1
     ]).
 
 :- use_module(lexicon(lex_access),[
@@ -171,9 +171,9 @@ initialize_filter_mrconso(Options, Args, InterpretedArgs) :-
 	interpret_args(IOptions, ArgSpec, Args, InterpretedArgs),
 	toggle_control_options(IOptions),
 	set_control_values(IOptions, InterpretedArgs),
-	default_full_year(FullYear),
+	default_release(Release),
 	use_multi_word_lexicon,
-	display_current_control_options(filter_mrconso, FullYear),
+	display_current_control_options(filter_mrconso, Release),
 	initialize_filter_mrconso,
 	!.
 
@@ -556,14 +556,16 @@ find_preferred(RevCLInfoLines, Preferred) :-
 	rev(RevCLInfoLines,CLInfoLines),
 	( member(InfoLine, CLInfoLines),
 	  InfoLine = clinfo(_,_,TS,STT,_,_,_,_,_,_),
-	  TS == 'P',
-	  STT == 'PF' ->
+	  preferred_TS_STT(TS, STT),
 	  Preferred = InfoLine
 	; CLInfoLines = [FirstCLInfoLine|_],
 	  FirstCLInfoLine = clinfo(CUI,_,_,_,_,_,_,_,_,_),
 	  format(user_output, '~NNo preferred form found for CUI ~w~n', [CUI]),
 	  Preferred = none
 	).
+
+preferred_TS_STT('P', 'PF').
+preferred_TS_STT(p,   'PF').
 
 /* filter_nmstr_dups(+CLInfoLines, +OutputStream,
    		     -NormCountsIn, -NormCountsOut,

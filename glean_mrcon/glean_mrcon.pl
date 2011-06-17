@@ -19,7 +19,7 @@
     ]).
 
 :- use_module(skr_db(db_access),[
-	default_full_year/1
+	default_release/1
     ]).
 
 :- use_module(skr_lib(addportray),[
@@ -122,8 +122,8 @@ initialize_glean_mrcon(Options, Args, InterpretedArgs) :-
 	interpret_args(IOptions, ArgSpec, Args, InterpretedArgs),
 	toggle_control_options(IOptions),
 	set_control_values(IOptions, InterpretedArgs),
-	default_full_year(FullYear),
-	display_current_control_options(glean_mrcon, FullYear),
+	default_release(Release),
+	display_current_control_options(glean_mrcon, Release),
 	!.
 
 
@@ -405,6 +405,8 @@ handle_CUIs(1, GenerateCUIs, CUIOutputStream, CUI0,
 	  % retract(current_cui(_)),
 	  % assert(current_cui(CUI0))
         ).
+% This doesn't look like it ever gets called,
+% because first_term_is_concept is a default option that is not overridden
 handle_CUIs(0, GenerateCUIs, CUIOutputStream, CUI0,
 	    _CurrentCUI, TermStatus, String, StringType, CUI) :-
 	% TermStatus P:  the LUI is the preferred LUI of the CUI.

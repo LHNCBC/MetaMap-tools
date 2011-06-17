@@ -27,7 +27,7 @@
     ]).
 
 :- use_module(skr_db(db_access),[
-	default_full_year/1
+	default_release/1
     ]).
 
 :- use_module(skr_lib(efficiency),[
@@ -107,8 +107,8 @@ initialize_mm_tokenizer(Options,Args,IArgs) :-
     interpret_args(IOptions,ArgSpecs,Args,IArgs),
     toggle_control_options(IOptions),
     set_control_values(IOptions,IArgs),
-    default_full_year(FullYear),
-    display_current_control_options(mm_tokenizer, FullYear),
+    default_release(Release),
+    display_current_control_options(mm_tokenizer, Release),
     find_tokenization_options(IOptions,TokOptions),
     length(TokOptions,NTokOptions),
     (NTokOptions =:= 1 ->

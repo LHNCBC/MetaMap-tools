@@ -7,16 +7,20 @@ MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sort`
 for DIR in $MAKE_DIRS
 do
    cd $DIR
-
+   PROGRAM=`echo $DIR | sed -e 's@[./]@@g'`
    echo '################################################################'
-   echo making in directory $DIR
+   /bin/rm -f $PROGRAM $PROGRAM.sav
+   echo making in directory $DIR:
+   echo linkSICStus -P -T $PROGRAM -O $PROGRAM
    echo '################################################################'
-
-   linkSICStus -P
+   linkSICStus -P -T $PROGRAM -O $PROGRAM &
    echo '################################################################'
    echo running xref in directory $DIR
    echo '################################################################'
-   echo y | SKRenv.10 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module
-
+   echo y | SKRenv.10 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module &
    cd ..
 done
+
+wait
+
+echo ALL DONE

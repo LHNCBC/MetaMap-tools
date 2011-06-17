@@ -29,7 +29,7 @@
     ]).
 
 :- use_module(skr_db(db_access),[
-        default_full_year/1
+        default_release/1
     ]).
 
 :- use_module(skr_lib(efficiency),[
@@ -115,8 +115,8 @@ initialize_build_ambig_examples(Options,Args,InterpretedArgs) :-
     interpret_args(IOptions,ArgSpec,Args,InterpretedArgs),
     toggle_control_options(IOptions),
     set_control_values(IOptions,InterpretedArgs),
-    default_full_year(FullYear),
-    display_current_control_options(build_ambig_examples, FullYear),
+    default_release(Release),
+    display_current_control_options(build_ambig_examples, Release),
     !.
 
 

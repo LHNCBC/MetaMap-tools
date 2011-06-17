@@ -1,12 +1,12 @@
 #!/bin/sh
 
 ARCHITECTURE=`uname`
+TOOLS_DIR=$NLSTOOLS
 
-for FILE in */a.out.$ARCHITECTURE
+for FILE in */*.sav
 do
-   BINARY=`echo $FILE | sed -e 's@/a.out@.BINARY@'`
-   ls -l $FILE
-   ls -l /nfsvol/nls/bin/$BINARY
-   /bin/cp -p $FILE /nfsvol/nls/bin/$BINARY
-   echo 
+    PROGRAM=`echo $FILE | cut -d'/' -f1`
+    echo installing $PROGRAM
+    /bin/cp -p $PROGRAM/$PROGRAM $NLSTOOLS/$PROGRAM/$PROGRAM.BINARY.$ARCHITECTURE
+    /bin/cp -p $PROGRAM/$PROGRAM.sav $NLSTOOLS/$PROGRAM/
 done
