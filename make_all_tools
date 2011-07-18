@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd $HOME/specialist/SKR/tools.SICStus
+cd $HOME/specialist/SKR/tools
 
 MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sort`
 
