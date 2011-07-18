@@ -280,7 +280,7 @@ compute_and_write_variants_2([Categories|RestCategories], Term) :-
 	compute_and_write_variants_2(RestCategories,Term),
 	!.
 compute_and_write_variants_2(Categories, Term) :-
-	format('ERROR: compute_and_write_variants_2/2 failed for ~p  ~p~n', [Categories,Term]).
+	format(user_output, 'ERROR: compute_and_write_variants_2/2 failed for ~p  ~p~n', [Categories,Term]).
 
 
 /* write_variants(+Term, +SimplifiedTermCats, +Variants)
