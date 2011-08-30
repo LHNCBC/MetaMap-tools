@@ -1,3 +1,13 @@
+#!/usr/bin/make -f 
+# Top-level makefile for tools directory.
+#
+# To use set environment variable "SKR" to location of SKR directory,
+# usually $(HOME)/specialist/SKR.
+#
+#   $ make SKR=$(HOME)/specialist/SKR
+#
+# In this case the sub-directory Makefiles includes Makefile.include
+# (Makefile is used implicitly).
 #
 #
 all : compile_build_ambig_examples compile_extract_mrconso_sources compile_filter_mrconso \

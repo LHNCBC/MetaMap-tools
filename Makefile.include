@@ -1,3 +1,14 @@
+#!/usr/bin/make -f 
+#
+# Makefile variables common to all Makefiles.
+#
+# To use set environment variable "SKR" to location of SKR directory,
+# usually $(HOME)/specialist/SKR.
+#
+#   $ make -f Makefile SKR=$(HOME)/specialist/SKR
+#
+# In this case the file Makefile includes Makefile.include.
+#
 ARCH=$(shell uname)
 SICSTUS=/nfsvol/crfiler-ind/II_Research/SICStus/sp-4.2.0-x86-linux-glibc2.5
 SICSTUS_BIN=$(SICSTUS)/bin
@@ -5,7 +16,6 @@ SICSTUS_LIBRARY=$(SICSTUS)/lib/sicstus-4.2.0/library
 SICSTUS_NATIVE_LIB=$(SICSTUS_LIBRARY)/x86-linux-glibc2.5
 
 LINKFLAGS=
-
 
 export SKR_HOME=$(SKR)
 export SKR_SRC_HOME=$(SKR_HOME)/src
