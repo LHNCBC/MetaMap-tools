@@ -1,0 +1,56 @@
+ARCH=$(shell uname)
+SICSTUS=/nfsvol/crfiler-ind/II_Research/SICStus/sp-4.2.0-x86-linux-glibc2.5
+SICSTUS_BIN=$(SICSTUS)/bin
+SICSTUS_LIBRARY=$(SICSTUS)/lib/sicstus-4.2.0/library
+SICSTUS_NATIVE_LIB=$(SICSTUS_LIBRARY)/x86-linux-glibc2.5
+
+LINKFLAGS=
+
+
+export SKR_HOME=$(SKR)
+export SKR_SRC_HOME=$(SKR_HOME)/src
+export SKR_LEXICON=$(SKR_SRC_HOME)/lexicon
+export SKR_DB=$(SKR_SRC_HOME)/db
+export SKR_DEBUG=$(SKR_SRC_HOME)/debug
+export SKR_LIB=$(SKR_SRC_HOME)/lib
+export SKR_LEX_LIB=$(SKR_SRC_HOME)/lexicon/lib
+export SKR_METAMAP=$(SKR_SRC_HOME)/metamap
+export SKR_SKR=$(SKR_SRC_HOME)/skr
+export SKR_TAGGER=$(SKR_SRC_HOME)/tagger
+export SKR_TEXT=$(SKR_SRC_HOME)/text
+export SKR_WSD=$(SKR_SRC_HOME)/WSD
+export SKR_MORPH=$(SKR_SRC_HOME)/lexicon/morph
+export SKR_MMI=$(SKR_SRC_HOME)/mmi
+
+export TOOLS_SRC=$(SKR)/tools
+
+export BERKELEY=/nfsvol/nls/tools/berkeley_db/Linux-i686/db-4.8.24
+
+export BERKELEY_INC=$(BERKELEY)/include
+export BERKELEY_LIB_A=$(BERKELEY)/lib/libdb-4.8.a
+export BERKELEY_LIB_SO=$(BERKELEY)/lib/libdb-4.8.so
+export BERKELEY_LIB_STATIC=$(BERKELEY)/lib/libdb-4.8.a
+export BERKELEY_LIB_DYNAMIC=$(BERKELEY)/lib/libdb-4.8.so
+
+
+RESPATH=.:$(SKR_LIB):$(SKR_LEXICON)/lexicon:$(SKR_LEXICON)/morph:$(SKR_DB)
+
+export LINK_FILES=$(SKR_DEBUG)/debug.o \
+           $(SKR_LEXICON)/functions/linfl.o \
+           $(SKR_LEXICON)/functions/tokenize.o \
+           $(SKR_LEXICON)/morph/lm.o \
+           $(SKR_LEXICON)/morph/util.o \
+           $(SKR_LEXICON)/query/btree_query.o \
+           $(SKR_LEXICON)/query/tokenize.o \
+           $(SKR_LEXICON)/query/wl.o \
+           $(SKR_LEXICON)/miscutil/miscutil.o \
+           $(SKR_DEBUG)/get_val.o \
+           $(SKR_LEXICON)/morph/dm.o \
+           $(SKR_DB)/c_nls_db.a \
+           $(SKR_SRC_HOME)/nls_signal.so \
+           $(SKR_SRC_HOME)/qp_lexicon.so \
+           $(SKR_SRC_HOME)/qp_morph.so \
+           $(BERKELEY_LIB_DYNAMIC) \
+           $(XDR_STATIC_LIB)
+
+export CONF=--conf BDBLIB=$(BERKELEY_LIB_DYNAMIC) --conf BDB_PATH=$(BERKELEY)
