@@ -57,9 +57,9 @@ export LINK_FILES=$(SKR_DEBUG)/debug.o \
            $(SKR_DEBUG)/get_val.o \
            $(SKR_LEXICON)/morph/dm.o \
            $(SKR_DB)/c_nls_db.a \
-           $(SKR_SRC_HOME)/nls_signal.so \
-           $(SKR_SRC_HOME)/qp_lexicon.so \
-           $(SKR_SRC_HOME)/qp_morph.so \
+           nls_signal.so \
+           qp_lexicon.so \
+           qp_morph.so \
            $(BERKELEY_LIB_DYNAMIC) \
            $(XDR_STATIC_LIB)
 
