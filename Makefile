@@ -45,3 +45,37 @@ compile_mm_variants :
 compile_prefilter_mrconso :
 	cd prefilter_mrconso && $(MAKE) 
 
+clean : clean_build_ambig_examples clean_extract_mrconso_sources clean_filter_mrconso \
+clean_glean_mrcon clean_filter_mrconso clean_flip_variants clean_glean_ambig \
+clean_glean_mrcon clean_mm_print clean_mm_tokenizer clean_mm_variants clean_prefilter_mrconso
+
+clean_build_ambig_examples :
+	cd build_ambig_examples && $(MAKE) clean
+
+clean_extract_mrconso_sources :
+	cd extract_mrconso_sources && $(MAKE) clean
+
+clean_filter_mrconso :
+	cd filter_mrconso && $(MAKE) clean
+
+clean_flip_variants :
+	cd flip_variants && $(MAKE) clean
+
+clean_glean_ambig :
+	cd glean_ambig && $(MAKE) clean
+
+clean_glean_mrcon :
+	cd glean_mrcon && $(MAKE) clean
+
+clean_mm_print :
+	cd mm_print && $(MAKE) clean
+
+clean_mm_tokenizer :
+	cd mm_tokenizer && $(MAKE) clean
+
+clean_mm_variants :
+	cd mm_variants && $(MAKE) clean
+
+clean_prefilter_mrconso :
+	cd prefilter_mrconso && $(MAKE) clean 
+

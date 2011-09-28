@@ -3,9 +3,9 @@
 # Makefile variables common to all Makefiles.
 #
 # To use set environment variable "SKR" to location of SKR directory,
-# usually $(HOME)/specialist/SKR.
+# usually ${HOME}/specialist/SKR.
 #
-#   $ make -f Makefile SKR=$(HOME)/specialist/SKR
+#   $ make -f Makefile SKR=${HOME}/specialist/SKR
 #
 # In this case the file Makefile includes Makefile.include.
 #
@@ -64,3 +64,28 @@ export LINK_FILES=$(SKR_DEBUG)/debug.o \
            $(XDR_STATIC_LIB)
 
 export CONF=--conf BDBLIB=$(BERKELEY_LIB_DYNAMIC) --conf BDB_PATH=$(BERKELEY)
+
+SPRUNTIME=sp-4.2.0
+SOFILES=c_nls_db.so db_access.so debug.so nls_signal.so qp_lexicon.so qp_morph.so 
+
+$(SPRUNTIME) :
+	ln -s $(SKR_SRC_HOME)/$(SPRUNTIME) $(SPRUNTIME)
+
+c_nls_db.so : $(SKR_SRC_HOME)/c_nls_db.so
+	ln -s $(SKR_SRC_HOME)/c_nls_db.so c_nls_db.so
+
+db_access.so : $(SKR_SRC_HOME)/db_access.so 
+	ln -s $(SKR_SRC_HOME)/db_access.so db_access.so
+
+debug.so : $(SKR_SRC_HOME)/debug.so 
+	ln -s $(SKR_SRC_HOME)/debug.so debug.so
+
+nls_signal.so : $(SKR_SRC_HOME)/debug.so 
+	ln -s $(SKR_SRC_HOME)/nls_signal.so nls_signal.so
+
+qp_lexicon.so : $(SKR_SRC_HOME)/debug.so 
+	ln -s $(SKR_SRC_HOME)/qp_lexicon.so qp_lexicon.so
+
+qp_morph.so : $(SKR_SRC_HOME)/debug.so 
+	ln -s $(SKR_SRC_HOME)/qp_morph.so qp_morph.so
+
