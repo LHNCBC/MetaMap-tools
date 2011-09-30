@@ -8,7 +8,7 @@ BINEXEC=$(APPNAME).BINARY.$(ARCH)
 
 all : $(BINEXEC) 
 
-$(SAVED_STATE) :
+$(SAVED_STATE) : $(SPRUNTIME) $(SOFILES)
 	sicstus $(SICSTUSARGS) --goal "save_program('$(SAVED_STATE)'), halt."
 
 $(BINEXEC) : $(SAVED_STATE)
