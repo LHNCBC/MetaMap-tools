@@ -49,17 +49,18 @@
     ]).
 
 :- use_module(skr_lib(nls_system), [
-	get_control_options_for_modules/2,
-	reset_control_options/1,
-	toggle_control_options/1,
-	set_control_values/2,
+	control_option/1,
 	display_control_options_for_modules/2,
 	display_current_control_options/2,
-	control_option/1,
-	parse_command_line/1,
-	interpret_options/4,
+	get_control_options_for_modules/2,
+	get_from_iargs/4,
 	interpret_args/4,
-	get_from_iargs/4
+	interpret_options/4,
+	parse_command_line/1,
+	pwd/1,
+	reset_control_options/1,
+	set_control_values/2,
+	toggle_control_options/1
     ]).
 
 :- use_module(mm_tools_lib(reader),[
@@ -168,7 +169,8 @@ mm_variants(InterpretedArgs) :-
     put_fact(input,file,InputFile),  % for reader:input_text/2's benefit
     current_output(SavedCurrentOutput),
     set_output(OutputStream),
-    process_all(0),
+    pwd(PWD),
+    process_all(0, PWD, InputFile),
     (control_option(end_of_processing) ->
 	format(OutputStream,'<<< EOT >>>~n',[])
     ;   true
@@ -181,27 +183,28 @@ mm_variants(InterpretedArgs) :-
 mm_variants(_InterpretedArgs).
 
 
-/* process_all/1
+/* process_all/3
 
 process_all// reads labelled terms from user_input and writes variants
 onto user_output.  (user_input and user_output have been redirected to
 files.)  */
 
-process_all(NumLines) :-
+process_all(NumLines, PWD, InputFile) :-
 	% input_text(sentence, ListOfAscii),
 	read_line(ListOfAscii),
 	(  ListOfAscii == end_of_file ->
 	   true
 	;  NumLines1 is NumLines + 1,
-	   maybe_announce_progress(NumLines1),
+	   maybe_announce_progress(NumLines1, PWD, InputFile),
 	   process_text(ListOfAscii),
-	   process_all(NumLines1)
+	   process_all(NumLines1, PWD, InputFile)
 	; true
 	).
 
-maybe_announce_progress(NumLines) :-
+maybe_announce_progress(NumLines, PWD, InputFile) :-
 	( NumLines rem 1000 =:= 0 ->
-	  format(user_output, 'Processed ~d lines.~n', [NumLines])
+	  format(user_output, 'Processed ~d lines of ~w/~w.~n', [NumLines,PWD,InputFile]),
+	  flush_output(user_output)
 	; true
 	).
 
