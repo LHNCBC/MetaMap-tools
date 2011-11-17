@@ -269,7 +269,7 @@ process_input(InputStream, InputFile, OutputStream, Interval, TotalLines,
 	normalize_meta_string(STR0String, NMSTRString, NMTypes0),
 	atom_codes(NMSTR0, NMSTRString),
 	% Include the MRRANK score in the clinfo/11 term
-	mrrank(SAB0, TTY0, MRRank),
+	get_mrrank(SAB0, TTY0, Line0, MRRank),
 	Line = clinfo(NMSTR0,MRRank,CUI0,LineData,TS0,STT0,TTY0,STR0,SAB0,SCD0,NMTypes0),
 	NumLines is 1,
 	process_cui_lui(InputStream, InputFile, OutputStream,
@@ -335,7 +335,7 @@ process_cui_lui(InputStream, InputFile, OutputStream,
 	  normalize_meta_string(STRString, NMSTRString, NMTypes),
 	  atom_codes(NMSTR, NMSTRString),
 	  % Include the MRRANK score in the clinfo/11 term
-	  mrrank(SAB, TTY, MRRank),
+	  get_mrrank(SAB, TTY, Line, MRRank),
 	  NextLine = clinfo(NMSTR,MRRank,CUI,LineData,TS,STT,TTY,STR,SAB,SCD,NMTypes),
 	  % format(user_output, '~n~w~n', [NextLine]),
 	  ( CUI == CUI0 ->
@@ -489,6 +489,13 @@ write_syntax_exclusions([CLInfoLine|Rest], OutputStream) :-
 % then restore the preferred concept.
 % Also delete it from whichever exclusion list it was in,
 % and update the counts accordingly.
+% If no concepts remain, don't restore anything!
+restore_pref_concept([], _Preferred, [],
+		     TSCounts,     TSCounts,
+		     NormCounts,   NormCounts,
+		     SyntaxCounts, SyntaxCounts,
+		     TSExclusions, NormExclusions, SyntaxExclusions,
+		     TSExclusions, NormExclusions, SyntaxExclusions).
 restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
 		     TSCountsIn,     TSCountsOut,
 		     NormCountsIn,   NormCountsOut,
@@ -496,9 +503,11 @@ restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
 		     TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
 		     TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut) :-
 	CLInfoLinesIn = [H|T],
-	( Preferred = clinfo(NMSTR,_MRRank,CUI,_LineData,_TS,_STT,_TTY,STR,_SAB,_SCD,_NMTypes),
-	  PrefTemplate = clinfo(NMSTR,_MRRank1,CUI,_LineData1,TS,STT,_TTY1,_STR1,_SAB1,_SCD1,_NMTypes1),
-	  preferred_TS_STT(TS, STT),
+	Preferred = clinfo(NMSTR,_MRRank,CUI,_LineData,
+			   _TS,_STT,_TTY,STR,_SAB,_SCD,_NMTypes),
+	PrefTemplate = clinfo(NMSTR,_MRRank1,CUI,_LineData1,
+			      TS,STT,_TTY1,_STR1,_SAB1,_SCD1,_NMTypes1),
+	( preferred_TS_STT(TS, STT),
 	  % Strenghten the test to allow any clinfo/11 structure containing
 	  % * the original Preferred Name's NMSTR and preferred TS ('p' or 'P') and STT ('PF')
 	  % * a preferred TS ('p' or 'P'), and
@@ -523,7 +532,7 @@ restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
 				      TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut,
 				      Reason),
 	  format(user_output,
-		 '~NRestored concept ~w|~w previously deleted because of ~w~n',
+		 '~NRestored concept |~w|~w| previously deleted because of ~w~n',
 		 [CUI,STR,Reason])
 	).
 
@@ -604,17 +613,13 @@ filter_nmstr_dups([CLInfoLine|RestInfoLines], OutputStream,
 		  [CLInfoLine|RestExcluded], FilteredRest) :-
 	nmstr_is_duplicate(RestInfoLines, CLInfoLine),
 	!,
-	CLInfoLine = clinfo(_NMSTR,MRRank,_CUI,LineData,_TS,_STT,TTY,_STR,SAB,_SCD,NMTypes),
-	atom_codes(LineData, Codes),
-	split_string_completely(Codes, "|", [CuiLuiSui,_,_,_,OrigString|_]),	  
-	% This is the *excluded* string
-	format(user_output, '>>|~w|~w|~w|~s|~s~n', [MRRank,SAB,TTY,CuiLuiSui,OrigString]),
+        CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LineData,_TS,_STT,_TTY,_STR,_SAB,_SCD,NMTypes),
+	announce_exclusion(RestInfoLines, CLInfoLine),
 	flush_output(user_output),
-
 	% format(user_output, 'DUPLICATE: ~a ~a ~a ~a~n', [STR,NMSTR,SAB,TTY]),
 	% We want to update the normalization counts for
 	% (1) the entire list of NMTypes, e.g., [case,hyphen,poss] and
-	% (2) each individual types e.g., case, hyphen, and poss.
+	% (2) each individual type e.g., case, hyphen, and poss.
 	% Creating the list [NMTypes|NMTypes] enables a simple way of doing this.
 	% Suppose as above that NMTypes = [case,hyphen,poss];
 	% Then [NMTypes|NMTypes] = will be [[case,hyphen,poss],case,hypen,poss],
@@ -627,6 +632,25 @@ filter_nmstr_dups([First|Rest], OutputStream,
 	filter_nmstr_dups(Rest, OutputStream,
 			  NormCountsIn, NormCountsOut, Excluded, FilteredRest).
 
+
+announce_exclusion([ExcludingLine|_Rest], ExcludedLine) :-
+	ExcludingLine = clinfo(_NMSTR2,MRRank2,_CUI2,LineData2,_TS2,
+			       _STT2,TTY2,_STR2,SAB2,_SCD2,_NMTypes2),
+	atom_codes(LineData2, Codes2),
+	split_string_completely(Codes2, "|", [CuiLuiSui2,_,_,_,OrigString2|_]),	  
+	ExcludedLine  = clinfo(_NMSTR1,MRRank1,_CUI1,LineData1,_TS1,
+			       _STT1,TTY1,_STR1,SAB1,_SCD1,_NMTypes1),
+	atom_codes(LineData1, Codes1),
+	split_string_completely(Codes1, "|", [CuiLuiSui1,_,_,_,OrigString1|_]),	  
+	% XXX|187|NCI|AB|C0439208:L1224124:S1086283|g|>>|37|CHV|SY|C0439208:L1224124:S1086283|g
+	% Diagnostic output indicating that the Excluding string
+	% 187|NCI|AB|C0439208:L1224124:S1086283|g
+	% has excluded the Excluded string
+	% 37|CHV|SY|C0439208:L1224124:S1086283|g
+	format(user_output, 'XXX|~w|~w|~w|~s|~s|>>|~w|~w|~w|~s|~s~n',
+	       		    [MRRank2,SAB2,TTY2,CuiLuiSui2,OrigString2,
+			     MRRank1,SAB1,TTY1,CuiLuiSui1,OrigString1]).
+			     
 
 update_all_normalization_counts([], _Increment, NormCounts, NormCounts).
 update_all_normalization_counts([H|T], Increment, NormCountsIn, NormCountsOut) :-
@@ -670,16 +694,8 @@ nmstr_is_duplicate/2 succeeds if NMSTR occurs in one of the CLInfoLines.  */
 
 nmstr_is_duplicate([Line2|_RestLines], Line1) :-
 	Line1 = clinfo(NMSTR1,_MRRank1,_CUI1,_LineData1,_TS1,_STT1,_TTY1,_STR1,_SAB1,_SCD1,_NMTypes1),
-	Line2 = clinfo(NMSTR2,MRRank2,_CUI2, LineData2,_TS2,_STT2, TTY2,_STR2, SAB2,_SCD2,_NMTypes2),
-	NMSTR2 == NMSTR1,
-	% MRRank2 > MRRank1,
-	!,
-	atom_codes(LineData2, Codes),
-	split_string_completely(Codes, "|", [CuiLuiSui,_,_,_,OrigString|_]),
-        % This is the *excluding* string
-	format(user_output, 'XXX|~w|~w|~w|~s|~s|',[MRRank2,SAB2,TTY2,CuiLuiSui,OrigString]).
-% nmstr_is_duplicate([_Line2|RestLines], Line1) :-
-% 	nmstr_is_duplicate(RestLines, Line1).
+	Line2 = clinfo(NMSTR2,_MRRank2,_CUI2,_LineData2,_TS2,_STT2,_TTY2,_STR2,_SAB2,_SCD2,_NMTypes2),
+	NMSTR2 == NMSTR1.
 
 % filter_by_term_status(+CLInfoLines, +OutputStream, -FilteredCLInfoLines)
 % filters out and writes with "ntss" prefix lines whose Term Status is "s" or "p"
@@ -877,3 +893,11 @@ write_syntax_counts([pref-PrefCount,synt-SyntCount], OutputStream) :-
 	format(OutputStream, '~Nis|~d|synt~n', [SyntCount]),
 	flush_output(OutputStream).
 
+get_mrrank(SAB, TTY, Line, MRRank) :-
+	( mrrank(SAB, TTY, MRRank) ->
+	  true
+	; control_value(mrrank_file, FileName),
+	  format(user_output, '### ERROR: SAB/TTY ~w/~w in line~n~*c~s~n~*cnot defined in MRRANK file ~w.~n',
+		 [SAB,TTY,11,32,Line,11,32,FileName]),
+	  abort
+	).
