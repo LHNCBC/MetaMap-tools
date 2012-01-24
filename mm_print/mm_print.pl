@@ -33,10 +33,7 @@
     ]).
 
 :- use_module(skr_db(db_access),[
-	db_get_cui_sources/2,
-	default_release/1,
-	initialize_db_access/0,
-	stop_db_access/0
+	default_release/1
     ]).
 
 :- use_module(skr_lib(negex), [
@@ -170,10 +167,9 @@ initialize_mm_print(Options,Args,IArgs) :-
     initialize_mm_print,
     !.
 
-initialize_mm_print :- initialize_db_access.
+initialize_mm_print.
 
-stop_mm_print :-
-	stop_db_access.
+stop_mm_print.
 
 usage :-
 	format('~nUsage: mm_print [<options>] <infile> [<outfile>]~n~n', []),
@@ -1644,11 +1640,6 @@ print_evaluations([ev(NegValue,CUI,MetaTerm,MetaConcept,_MetaWords,SemTypes0,
 	( control_option(semantic_types) ->
 	  expand_semtypes(SemTypes0, SemTypes),
 	  format(OutputStream, ' ~p', [SemTypes])
-	; true
-	),
-	( control_option(preferred_name_sources) ->
-	  db_get_cui_sources(CUI, Sources),
-	  format(' ~p', [Sources])
 	; true
 	),
 	format(OutputStream, '~n', []),
