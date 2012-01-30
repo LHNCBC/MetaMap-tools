@@ -12,7 +12,7 @@ $(SAVED_STATE) : $(SPRUNTIME) $(SOFILES)
 	sicstus $(SICSTUSARGS) --goal "save_program('$(SAVED_STATE)'), halt."
 
 $(BINEXEC) : $(SAVED_STATE)
-	spld -vv $(CONF) --movable $(PREFIX)/$(SAVED_STATE) --respath=$(RESPATH) --output=$(BINEXEC) $(LINK_FILES) $(LDFLAGS)
+	spld -vv $(CONF) --movable --static $(SAVED_STATE) --respath=$(RESPATH) --output=$(BINEXEC) $(LINK_FILES) $(LDFLAGS)
 
 clean :
 	rm -f $(BINEXEC) $(SAVED_STATE)
