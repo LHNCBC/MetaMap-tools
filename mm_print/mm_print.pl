@@ -12,7 +12,7 @@
 
 :- use_module(metamap(metamap_utilities),[
 	build_concept_name_1/4,
-	dump_evaluations_indented/6
+	dump_evaluations_indented/7
     ]).
 
 :- use_module(metamap(metamap_tokenization),[
@@ -795,7 +795,7 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 	    true
         ;   dump_evaluations_indented(CandidateList,TotalCandidateCount,
 				      ExcludedCandidateCount, PrunedCandidateCount,
-				      RemainingCandidateCount, 'Candidates'),
+				      RemainingCandidateCount, 'Candidates', OutputStream),
 	    (NTruncatedC=:=0 ->
 	        true
 	    ;   format(OutputStream,'     [~d candidates were not printed]~n',
