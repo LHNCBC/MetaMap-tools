@@ -12,7 +12,7 @@
 
 :- use_module(metamap(metamap_utilities),[
 	build_concept_name_1/4,
-	dump_evaluations_indented/2
+	dump_evaluations_indented/7
     ]).
 
 :- use_module(metamap(metamap_tokenization),[
@@ -73,7 +73,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2011AB),[
+:- use_module(skr_lib(semtype_translation_2012AA),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).
@@ -394,8 +394,11 @@ get_phrase_term(InputStream, UtteranceText, PhraseTerm) :-
 	  fail
 	).
 
-get_candidates(InputStream, UtteranceText, candidates(Candidates)) :-
-	( fread_term(InputStream, candidates(Candidates)) ->
+get_candidates(InputStream, UtteranceText, CandidatesTerm) :-
+	( fread_term(InputStream, CandidatesTerm),
+	  CandidatesTerm = candidates(_TotalCandidateCount,
+				      _ExcludedCandidateCount,_PrunedCandidateCount,
+				      _RemainingCandidateCount,_CandidateList) ->
 	  true
 	; format('~NERROR: (get_candidates_term/3) Missing candidates for "~p".~n', [UtteranceText]),
 	  fail
@@ -551,6 +554,7 @@ non-alphanumeric characters, e.g., ')', ').' or ':'. */
 %     !,
 %     filter_alnum_phrases(Rest,FilteredRest).
 % phrase/4 retrofit
+filter_alnum_phrases([], []).
 filter_alnum_phrases([phrase(Text,Syntax,Candidates,Mappings,PosInfo,ReplPos)|Rest],
 		     [phrase(Text,Syntax,Candidates,Mappings,PosInfo,ReplPos)|FilteredRest]) :-
     atom_codes(Text,String),
@@ -584,7 +588,9 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
     control_option(potential_stopphrase_dump),
     !,
     Phrase = phrase(Text,Syntax,Candidates,_Mappings,_PosInfo,_ReplPos),
-    (Candidates == candidates([]) ->
+    (Candidates = candidates(_TotalCandidateCount,_ExcludedCandidateCount,
+			     _PrunedCandidateCount,_RemainingCandidateCount,[]) ->
+
         lower(Text,LCText),
 % oh yes it does; cf. "dose"	
 % syntactic tagging didn't make enough difference to warrant its use
@@ -655,20 +661,20 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 %    this counts the length of each mapping, not the number of mappings
 %    print_mapping_counts(Mappings,Label,OutputStream),
     print_phrases(Rest,String,Label,OutputStream).
-print_phrases([Phrase|Rest],String,Label,OutputStream) :-
-    control_option(non_monotonic_mapping_dump),
-    !,
-    Phrase = phrase(Text,_Syntax,Candidates,Mappings,_PosInfo,_ReplPos),
-    (( Candidates=[ev(NegBestC,_,_,_,_,_,_,_,_,_Sources,_PosInfo)|_],
-      Mappings=[map(NegBestM,_)|_],
-      NegBestM>NegBestC) ->
-	format(OutputStream,'~nNon-monotonic mapping for~n~p ~p~n',[Label,Text]),
-%	print_evaluations(Candidates,'Candidates',OutputStream),
-	dump_evaluations_indented(Candidates,'Candidates',OutputStream),
-	print_mappings(Mappings,'Mappings',OutputStream)
-    ;   true
-    ),
-    print_phrases(Rest,String,Label,OutputStream).
+% print_phrases([Phrase|Rest],String,Label,OutputStream) :-
+%     control_option(non_monotonic_mapping_dump),
+%     !,
+%     Phrase = phrase(Text,_Syntax,Candidates,Mappings,_PosInfo,_ReplPos),
+%     (( Candidates=[ev(NegBestC,_,_,_,_,_,_,_,_,_Sources,_PosInfo)|_],
+%       Mappings=[map(NegBestM,_)|_],
+%       NegBestM>NegBestC) ->
+% 	format(OutputStream,'~nNon-monotonic mapping for~n~p ~p~n',[Label,Text]),
+% %	print_evaluations(Candidates,'Candidates',OutputStream),
+% 	dump_evaluations_indented(Candidates,'Candidates',OutputStream),
+% 	print_mappings(Mappings,'Mappings',OutputStream)
+%     ;   true
+%     ),
+%     print_phrases(Rest,String,Label,OutputStream).
 print_phrases([Phrase|Rest],String,Label,OutputStream) :-
     control_option(odd_mapping_dump),
     !,
@@ -744,6 +750,10 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 %    print_phrases(Rest,String,Label,OutputStream).
 print_phrases([Phrase|Rest],String,Label,OutputStream) :-
     Phrase = phrase(Text,Syntax,Candidates0,Mappings0,_PosInfo,_ReplPos),
+
+    Candidates0 = candidates(TotalCandidateCount,
+			     ExcludedCandidateCount,PrunedCandidateCount,
+			     RemainingCandidateCount,CandidateList),
     lower(Text,LCText),
     \+stop_phrase(LCText),
     (control_option(filter_out_01) ->
@@ -783,7 +793,9 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 	),
 	(Candidates == [] ->
 	    true
-        ;   dump_evaluations_indented(Candidates,'Candidates',OutputStream),
+        ;   dump_evaluations_indented(CandidateList,TotalCandidateCount,
+				      ExcludedCandidateCount, PrunedCandidateCount,
+				      RemainingCandidateCount, 'Candidates', OutputStream),
 	    (NTruncatedC=:=0 ->
 	        true
 	    ;   format(OutputStream,'     [~d candidates were not printed]~n',
@@ -1452,18 +1464,19 @@ organize_semantic_types(Phrases, OutputStream) :-
 extract_mappings([],[]) :-
     !.
 extract_mappings([Phrase|Rest],ExtractedRest) :-
+    Phrase = phrase(_,_,_,mappings([]),_PosInfo,_ReplPos),
     !,
-    Phrase = phrase(_,_,_,_,[],_PosInfo,_ReplPos),
     extract_mappings(Rest,ExtractedRest).
 extract_mappings([Phrase|Rest],Result) :-
-    Phrase = phrase(_,_,_,_,Mappings0,_PosInfo,_ReplPos),
+    Phrase = phrase(_,_,_,Mappings0,_PosInfo,_ReplPos),
+    Mappings0=mappings([FirstMapping|RestMappings]),
     (control_option(first_mappings_only) ->
-	Mappings0=[FirstMapping|_],
+
 	Mappings=[FirstMapping]
-    ;   Mappings=Mappings0
+    ;   Mappings=[FirstMapping|RestMappings]
     ),
-    append(Mappings,RestMappings,Result),
-    extract_mappings(Rest,RestMappings).
+    append(Mappings,RemainingMappings,Result),
+    extract_mappings(Rest,RemainingMappings).
 
 extract_sts_concepts([],[]) :-
     !.
@@ -1474,7 +1487,7 @@ extract_sts_concepts([map(_,Evs)|Rest],Result) :-
 
 extract_sts_concepts_aux([],[]) :-
     !.
-extract_sts_concepts_aux([ev(_,_,Term,Concept,_,STs,_,_,_,_Sources,_PosInfo)|Rest],Result) :-
+extract_sts_concepts_aux([ev(_,_,Term,Concept,_,STs,_,_,_,_Sources,_PosInfo,_Status)|Rest],Result) :-
     form_sts_concepts(STs,Term,Concept,STsConcepts),
     append(STsConcepts,RestSTsConcepts,Result),
     extract_sts_concepts_aux(Rest,RestSTsConcepts).
@@ -1516,12 +1529,12 @@ update_saved_results(STsConcepts) :-
     assert(saved_results(New)),
     !.
 	
-dump_evaluations_indented(Evaluations,Label,OutputStream) :-
-    current_output(CurrentOutput),
-    set_output(OutputStream),
-    (dump_evaluations_indented(Evaluations,Label); true),
-    !,
-    set_output(CurrentOutput).
+% dump_evaluations_indented(Evaluations,Label,OutputStream) :-
+%     current_output(CurrentOutput),
+%     set_output(OutputStream),
+%     (dump_evaluations_indented(Evaluations,Label); true),
+%     !,
+%     set_output(CurrentOutput).
 
 /* extract_words_by_indices(+Indices, +Words, -ExtractedWords)
 
@@ -1623,7 +1636,7 @@ fread_term(Stream, Term) :-
 % Can this be replaced by metamap_evaluation:dump_evaluations?
 print_evaluations([], _).
 print_evaluations([ev(NegValue,CUI,MetaTerm,MetaConcept,_MetaWords,SemTypes0,
-                      _MatchMap,_InvolvesHead,_IsOvermatch,SourceInfo,_PosInfo)|Rest],
+                      _MatchMap,_InvolvesHead,_IsOvermatch,SourceInfo,_PosInfo,_Status)|Rest],
                   OutputStream) :-
 	Value is -NegValue,
 	build_concept_name_1(MetaConcept, CUI, SourceInfo, ConceptName),
