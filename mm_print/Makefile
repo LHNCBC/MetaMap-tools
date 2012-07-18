@@ -8,11 +8,11 @@ BINEXEC=$(APPNAME).BINARY.$(ARCH)
 
 all : $(BINEXEC) 
 
-$(SAVED_STATE) : $(SPRUNTIME) $(SOFILES)
+$(SAVED_STATE) : 
 	sicstus $(SICSTUSARGS) --goal "save_program('$(SAVED_STATE)'), halt."
 
 $(BINEXEC) : $(SAVED_STATE)
-	spld -vv $(CONF) --movable --static $(SAVED_STATE) --respath=$(RESPATH) --output=$(BINEXEC) $(LINK_FILES) $(LDFLAGS)
+	spld -vv $(CONF) --static $(SAVED_STATE) --respath=$(RESPATH) --output=$(BINEXEC) $(LINK_FILES) $(LDFLAGS)
 
 clean :
 	rm -f $(BINEXEC) $(SAVED_STATE)
