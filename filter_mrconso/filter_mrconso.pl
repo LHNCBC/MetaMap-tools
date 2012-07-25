@@ -65,9 +65,12 @@
     ]).
 
 :- use_module(mm_tools_lib(mwi_utilities),[
+	announce_lines/4,
 	compute_unique_filename/3,
 	fget_non_null_line/2,
 	generate_syntactic_analysis/3,
+	get_progress_bar_interval/1,
+	get_total_lines/1,
 	normalize_meta_string/3,
 	parse_record/3
     ]).
@@ -223,9 +226,9 @@ usage :-
 filter_mrconso/1 controls all filter_mrconso processing.  */
 
 filter_mrconso(InterpretedArgs) :-
-	get_from_iargs(infile, name, InterpretedArgs, InputFile),
-	get_from_iargs(infile, stream, InterpretedArgs, InputStream),
-	get_from_iargs(outfile, name, InterpretedArgs, OutputFile),
+	get_from_iargs(infile,  name,   InterpretedArgs, InputFile),
+	get_from_iargs(infile,  stream, InterpretedArgs, InputStream),
+	get_from_iargs(outfile, name,   InterpretedArgs, OutputFile),
 	get_from_iargs(outfile, stream, InterpretedArgs, OutputStream),
 	get_progress_bar_interval(Interval),
 	get_total_lines(TotalLines),
@@ -243,19 +246,6 @@ filter_mrconso(InterpretedArgs) :-
 	close(InputStream),
 	!.
 
-get_progress_bar_interval(Interval) :-
-	( control_value(progress_bar_interval, Interval) ->
-	  true
-	; Interval = 1000
-	).
-
-get_total_lines(TotalLines) :-
-	( control_value(total_lines, TotalLines) ->
-	  true
-	; TotalLines = -9999
-	).
-
-
 /* process_input(+InputStream, +OutputStream)
 
 process_input/2 reads lines from InputStream and writes filtered lines to
@@ -264,13 +254,16 @@ OutputStream.  */
 process_input(InputStream, InputFile, OutputStream, Interval, TotalLines,
 	      NormCounts, TSCounts, SyntaxCounts) :-
 	fget_non_null_line(InputStream, Line0),
-	parse_line(Line0, LineData, CUI0, LUI0, TS0, STT0, TTY0, STR0, SAB0, SCD0),
+	parse_line(Line0, LineData, CUI0, LUI0, SUI0, TS0, STT0, TTY0, STR0, SAB0, CODE0),
 	atom_codes(STR0, STR0String),
 	normalize_meta_string(STR0String, NMSTRString, NMTypes0),
+	% format(user_output,
+	%        'NORM|~w|~w|~w|~s|~s|~w~n',
+	%        [CUI0,LUI0,SUI0,STR0String, NMSTRString, NMTypes0]),
 	atom_codes(NMSTR0, NMSTRString),
-	% Include the MRRANK score in the clinfo/11 term
+	% Include the MRRANK score in the clinfo/13 term
 	get_mrrank(SAB0, TTY0, Line0, MRRank),
-	Line = clinfo(NMSTR0,MRRank,CUI0,LineData,TS0,STT0,TTY0,STR0,SAB0,SCD0,NMTypes0),
+	Line = clinfo(NMSTR0,MRRank,CUI0,LUI0,SUI0,LineData,TS0,STT0,TTY0,STR0,SAB0,CODE0,NMTypes0),
 	NumLines is 1,
 	process_cui_lui(InputStream, InputFile, OutputStream,
 			NumLines, Interval, TotalLines,
@@ -279,18 +272,22 @@ process_input(InputStream, InputFile, OutputStream, Interval, TotalLines,
 			[p-0,s-0], TSCounts,
 			[pref-0,synt-0], SyntaxCounts).
 
-/* parse_line(+Line, -CUI, -LUI, -TS, -STT, -TTY, -STR, -SAB, -SCD)
+/* parse_line(+Line, -CUI, -LUI, -TS, -STT, -TTY, -STR, -SAB, -CODE)
 
 parse_line/9 extracts CUI, ... from Line.  */
 
-parse_line(LineString, LineAtom, CUIAtom, LUIAtom, TSAtom,
-	   STTAtom, TTYAtom, STRAtom, SABAtom, SCDAtom) :-
+parse_line(LineString, LineAtom, CUIAtom, LUIAtom, SUIAtom, TSAtom,
+	   STTAtom, TTYAtom, STRAtom, SABAtom, CODEAtom) :-
+	% parse_record(LineString, "|",
+	%	     [CLSString,_N,TSString,STTString,STRString,SABString,TTYString,CODEString]),
 	parse_record(LineString, "|",
-		     [CLSString,_N,TSString,STTString,STRString,SABString,TTYString,SCDString]),
-	atom_codes_list([LineAtom,TSAtom,STTAtom,STRAtom,SABAtom,TTYAtom,SCDAtom],
-			[LineString,TSString,STTString,STRString,SABString,TTYString,SCDString]),
-	parse_record(CLSString, ":", [CUIString,LUIString,_SUI]),
-	atom_codes_list([CUIAtom,LUIAtom],[CUIString,LUIString]),
+		     [CUIString,_LATString,TSString,LUIString,STTString,
+		      SUIString,_ISPREFString,_AUIString,_SAUIString,
+		      _SCUIString,_SDUIString,SABString,TTYString,CODEString,
+		      STRString,_SRLString,_SUPPRESSString,_CVFString]),
+	atom_codes_list([LineAtom,TSAtom,STTAtom,STRAtom,SABAtom,TTYAtom,CODEAtom],
+			[LineString,TSString,STTString,STRString,SABString,TTYString,CODEString]),
+	atom_codes_list([CUIAtom,LUIAtom,SUIAtom],[CUIString,LUIString,SUIString]),
 	!.
 parse_line(Line, _, _, _, _, _, _, _, _, _) :-
 	format('~NFatal error: Bad input ~s~n', [Line]),
@@ -309,7 +306,7 @@ parse_line(Line, _, _, _, _, _, _, _, _, _) :-
    ***     WARNING     WARNING     WARNING     WARNING     WARNING     ***
 
    
-   process_cui_lui/6 accumulates CLInfoLines (clinfo/7 terms) by
+   process_cui_lui/6 accumulates CLInfoLines (clinfo/13 terms) by
    reading Line from InputStream, extracting some fields, forming the
    normalized Meta string NMSTR) with the same concept id (CUI) and
    term id (LUI) as the input.  When a new CUI,LUI pair is encountered, the
@@ -329,14 +326,17 @@ process_cui_lui(InputStream, InputFile, OutputStream,
 	  NumLinesNext is NumLinesIn + 1,
 	  % format(user_output, '~d:~a~n', [NumLinesNext,Line]),
 	  announce_lines(NumLinesNext, Interval, TotalLines, InputFile),
-	  parse_line(Line, LineData, CUI, LUI, TS, STT, TTY, STR, SAB, SCD),
+	  parse_line(Line, LineData, CUI, LUI, SUI, TS, STT, TTY, STR, SAB, CODE),
 	  % LAT="ENG",   % limit to English; no need with mrconso.eng
 	  atom_codes(STR, STRString),
 	  normalize_meta_string(STRString, NMSTRString, NMTypes),
+	  % format(user_output,
+	  %	 'NORM|~w|~w|~w|~s|~s|~w~n',
+	  %	 [CUI,LUI,SUI,STRString, NMSTRString, NMTypes]),
 	  atom_codes(NMSTR, NMSTRString),
-	  % Include the MRRANK score in the clinfo/11 term
+	  % Include the MRRANK score in the clinfo/13 term
 	  get_mrrank(SAB, TTY, Line, MRRank),
-	  NextLine = clinfo(NMSTR,MRRank,CUI,LineData,TS,STT,TTY,STR,SAB,SCD,NMTypes),
+	  NextLine = clinfo(NMSTR,MRRank,CUI,LUI,SUI,LineData,TS,STT,TTY,STR,SAB,CODE,NMTypes),
 	  % format(user_output, '~n~w~n', [NextLine]),
 	  ( CUI == CUI0 ->
 	    process_cui_lui(InputStream, InputFile, OutputStream,
@@ -363,35 +363,6 @@ process_cui_lui(InputStream, InputFile, OutputStream,
 			   SyntaxCountsIn, SyntaxCountsOut)
 	).
 
-% Announce how many lines have been processed every Interval lines
-% and at the very last line.
-announce_lines(NumLines, Interval, TotalLines, InputFile) :-
-	( TotalLines > 0 ->
-	  announce_lines_with_total(NumLines, Interval, TotalLines, InputFile)
-	; announce_lines_without_total(NumLines, Interval, InputFile)
-	).
-
-announce_lines_without_total(NumLines, Interval, InputFile) :-
-	( 0 is NumLines mod Interval ->
-	  maybe_atom_gc(_, _),
-	  format(user_output,
-		 '~NProcessed ~d lines of file ~w~n',
-		 [NumLines,InputFile])
-	; true
-	).
-
-announce_lines_with_total(NumLines, Interval, TotalLines, InputFile) :-
-	( NumLines is TotalLines ->
-	  format(user_output,
-		 '~NCOMPLETED ~d of ~w lines of file ~w~n',
-		 [NumLines,TotalLines,InputFile])
-	; 0 is NumLines mod Interval ->
-	  maybe_atom_gc(_, _),
-	  format(user_output,
-		 '~NProcessed ~d of ~w lines of file ~w~n',
-		 [NumLines,TotalLines,InputFile])
-	; true
-	).
 
 /* filter_and_write(+OutputStream, +CLInfoLines)
 
@@ -411,7 +382,7 @@ filter_and_write(OutputStream,   CLInfoLines0,
 		 SyntaxCountsIn, SyntaxCountsOut) :-
 	% First, find the preferred concept name.
 	find_preferred(CLInfoLines0, Preferred),
-	% Preferred = clinfo(_NMSTR0,_MRRank,CUI0,_LineData0,_TS0,_STT0,_TTY0,STR0,_SAB0,_SCD0,_NMTypes0),
+	% Preferred = clinfo(_NMSTR0,_MRRank,CUI0,_LineData0,_TS0,_STT0,_TTY0,STR0,_SAB0,_CODE0,_NMTypes0),
 	% atom_codes(StrAtom0, STR0),
 	% atom_codes(CUIAtom0, CUI0),
 	% format(user_output, 'PREFERRED: ~w|~w~n', [CUIAtom0,StrAtom0]),
@@ -466,26 +437,29 @@ write_exclusions(OutputStream, TSExclusions, NormExclusions, SyntaxExclusions) :
 
 write_term_status_exclusions([], _OutputStream).
 write_term_status_exclusions([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,LineData,_TS,_STT,_TTY,_STR,_SAB,_SCD,NMTypes),
+	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
+			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
         format(OutputStream,'ntss|~a|~p|~a~n', [LineData,NMTypes,NMSTR]),
 	write_term_status_exclusions(Rest, OutputStream).
 
 write_normalization_exclusions([], _OutputStream).
 write_normalization_exclusions([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,LineData,_TS,_STT,_TTY,_STR,_SAB,_SCD,NMTypes),
+	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
+			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
 	format(OutputStream,'nnorm|~a|~p|~a~n', [LineData,NMTypes,NMSTR]),
 	write_normalization_exclusions(Rest, OutputStream).
 
 write_syntax_exclusions([], _OutputStream).
 write_syntax_exclusions([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,LineData,_TS,_STT,_TTY,_STR,_SAB,_SCD,NMTypes),
+	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
+			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
 	format(OutputStream, 'nsynt|~a|~p|~a~n', [LineData,NMTypes,NMSTR]),          
 	write_syntax_exclusions(Rest, OutputStream).
 
-% CLInfoLines is the list of remaining concepts after term-status filtering,
+% CLInfoLines is the list of remaining strings after term-status filtering,
 % lexical (normalization) filtering, and syntactic filtering.
-% If at least one concept remains, i.e., CLInfoLines unifies with [H|T],
-% but the preferred concept was excluded i.e., \+ memberchk(Preferred, CLInfoLines3),
+% If at least one string remains, i.e., CLInfoLines unifies with [H|T],
+% but the preferred name was excluded i.e., \+ memberchk(Preferred, CLInfoLines3),
 % then restore the preferred concept.
 % Also delete it from whichever exclusion list it was in,
 % and update the counts accordingly.
@@ -503,12 +477,12 @@ restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
 		     TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
 		     TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut) :-
 	CLInfoLinesIn = [H|T],
-	Preferred = clinfo(NMSTR,_MRRank,CUI,_LineData,
-			   _TS,_STT,_TTY,STR,_SAB,_SCD,_NMTypes),
-	PrefTemplate = clinfo(NMSTR,_MRRank1,CUI,_LineData1,
-			      TS,STT,_TTY1,_STR1,_SAB1,_SCD1,_NMTypes1),
+	Preferred = clinfo(NMSTR,_MRRank,CUI,LUI,SUI,_LineData,
+			   _TS,_STT,_TTY,STR,_SAB,_CODE,_NMTypes),
+	PrefTemplate = clinfo(NMSTR,_MRRank1,CUI,LUI,SUI,_LineData1,
+			      TS,STT,_TTY1,_STR1,_SAB1,_CODE1,_NMTypes1),
 	( preferred_TS_STT(TS, STT),
-	  % Strenghten the test to allow any clinfo/11 structure containing
+	  % Strenghten the test to allow any clinfo/13 structure containing
 	  % * the original Preferred Name's NMSTR and preferred TS ('p' or 'P') and STT ('PF')
 	  % * a preferred TS ('p' or 'P'), and
 	  % * the preferred STT ('PF')
@@ -532,8 +506,8 @@ restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
 				      TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut,
 				      Reason),
 	  format(user_output,
-		 '~NRestored concept |~w|~w| previously deleted because of ~w~n',
-		 [CUI,STR,Reason])
+		 '~NRestored concept ~w|~w|~w|~w previously deleted because of ~w~n',
+		 [CUI,LUI,SUI,STR,Reason])
 	).
 
 delete_pref_from_exclusions(Preferred,
@@ -543,7 +517,8 @@ delete_pref_from_exclusions(Preferred,
 			    SyntaxCountsIn,   SyntaxCountsOut,
 			    TSExclusionsOut,  NormExclusionsOut, SyntaxExclusionsOut,
 			    Reason) :-
-	Preferred = clinfo(_NMSTR,_MRRank,_CUI,_LineData,TS,_STT,_TTY,_STR,_SAB,_SCD,NMTypes),
+	Preferred = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
+			   TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
 	  % Was the preferred concept excluded because of term status?
 	( selectchk(Preferred, TSExclusionsIn,  TSExclusionsOut) ->
 	  Reason = 'term status',
@@ -588,12 +563,14 @@ delete_pref_from_exclusions(Preferred,
 find_preferred(RevCLInfoLines, Preferred) :-
 	rev(RevCLInfoLines,CLInfoLines),
 	( member(InfoLine, CLInfoLines),
-	  InfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LineData,TS,STT,_TTY,_STR,_SAB,_SCD,_NMTypes),
+	  InfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
+			    TS,STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
 	  preferred_TS_STT(TS, STT),
 	  !,
 	  Preferred = InfoLine
 	; CLInfoLines = [FirstCLInfoLine|_],
-	  FirstCLInfoLine = clinfo(_NMSTR,_MRRank,CUI,_LineData,TS,STT,_TTY,_STR,_SAB,_SCD,_NMTypes),
+	  FirstCLInfoLine = clinfo(_NMSTR,_MRRank,CUI,_LUI,_SUI,_LineData,
+				   TS,STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
 	  format(user_output, '~NNo preferred form found for CUI ~w~n', [CUI]),
 	  Preferred = none
 	).
@@ -613,7 +590,8 @@ filter_nmstr_dups([CLInfoLine|RestInfoLines], OutputStream,
 		  [CLInfoLine|RestExcluded], FilteredRest) :-
 	nmstr_is_duplicate(RestInfoLines, CLInfoLine),
 	!,
-        CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LineData,_TS,_STT,_TTY,_STR,_SAB,_SCD,NMTypes),
+        CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
+			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
 	announce_exclusion(RestInfoLines, CLInfoLine),
 	flush_output(user_output),
 	% format(user_output, 'DUPLICATE: ~a ~a ~a ~a~n', [STR,NMSTR,SAB,TTY]),
@@ -634,22 +612,18 @@ filter_nmstr_dups([First|Rest], OutputStream,
 
 
 announce_exclusion([ExcludingLine|_Rest], ExcludedLine) :-
-	ExcludingLine = clinfo(_NMSTR2,MRRank2,_CUI2,LineData2,_TS2,
-			       _STT2,TTY2,_STR2,SAB2,_SCD2,_NMTypes2),
-	atom_codes(LineData2, Codes2),
-	split_string_completely(Codes2, "|", [CuiLuiSui2,_,_,_,OrigString2|_]),	  
-	ExcludedLine  = clinfo(_NMSTR1,MRRank1,_CUI1,LineData1,_TS1,
-			       _STT1,TTY1,_STR1,SAB1,_SCD1,_NMTypes1),
-	atom_codes(LineData1, Codes1),
-	split_string_completely(Codes1, "|", [CuiLuiSui1,_,_,_,OrigString1|_]),	  
+	ExcludingLine = clinfo(_NMSTR2,MRRank2,CUI2,LUI2,SUI2,_LineData2,
+			       _TS2,_STT2,TTY2,STR2,SAB2,_CODE2,_NMTypes2),
+	ExcludedLine  = clinfo(_NMSTR1,MRRank1,CUI1,LUI1,SUI1,_LineData1,
+			       _TS1,_STT1,TTY1,STR1,SAB1,_CODE1,_NMTypes1),
 	% XXX|187|NCI|AB|C0439208:L1224124:S1086283|g|>>|37|CHV|SY|C0439208:L1224124:S1086283|g
 	% Diagnostic output indicating that the Excluding string
 	% 187|NCI|AB|C0439208:L1224124:S1086283|g
 	% has excluded the Excluded string
 	% 37|CHV|SY|C0439208:L1224124:S1086283|g
-	format(user_output, 'XXX|~w|~w|~w|~s|~s|>>|~w|~w|~w|~s|~s~n',
-	       		    [MRRank2,SAB2,TTY2,CuiLuiSui2,OrigString2,
-			     MRRank1,SAB1,TTY1,CuiLuiSui1,OrigString1]).
+	format(user_output, 'XXX|~w|~w|~w|~w|~w|~s|~s|>>|~w|~w|~w|~w|~w|~s|~s~n',
+	       		    [MRRank2,SAB2,TTY2,CUI2,LUI2,SUI2,STR2,
+			     MRRank1,SAB1,TTY1,CUI1,LUI1,SUI1,STR1]).
 			     
 
 update_all_normalization_counts([], _Increment, NormCounts, NormCounts).
@@ -676,25 +650,27 @@ nmstr_is_duplicate/2 succeeds if NMSTR occurs in one of the CLInfoLines.  */
 % The MRRANK table contains the following fields:
 % Rank|SAB|TTY|Suppress
 
-% The clinfo/11 terms come in to nmstr_is_duplicate/2 sorted in increasing order by
+% The clinfo/13 terms come in to nmstr_is_duplicate/2 sorted in increasing order by
 % (1) normalized string (NMSTR), and then
 % (2) MRRANK
-% A clinfo/11 term should be excluded by normalization iff
-% another clinfo/11 term with the same NMSTR has a higher MRRANK.
-% Since all clinfo/11 terms with the same NMSTR will be adjacent,
+% A clinfo/13 term should be excluded by normalization iff
+% another clinfo/13 term with the same NMSTR has a higher MRRANK.
+% Since all clinfo/13 terms with the same NMSTR will be adjacent,
 % the exclusion logic is very simple:
 % (1) If Line1 and Line2 have the same NMSTR,
-%     because the clinfo/11 terms are sorted,
+%     because the clinfo/13 terms are sorted,
 %     Line2's MRRANK will necessarily be higher than Line1's,
 %     so exclude Line1. There is no need to compare the two MRRANKs.
 % (2) Otherwise (if Line1 and Line2 have different NMSTRs),
-%     Line1 should *not* be excluded, because there is no other clinfo/11 term
+%     Line1 should *not* be excluded, because there is no other clinfo/13 term
 %     with the same NMSTR and a higher score,
-%     so there's no need to recurse on the rest of the clinfo/11 terms!
+%     so there's no need to recurse on the rest of the clinfo/13 terms!
 
 nmstr_is_duplicate([Line2|_RestLines], Line1) :-
-	Line1 = clinfo(NMSTR1,_MRRank1,_CUI1,_LineData1,_TS1,_STT1,_TTY1,_STR1,_SAB1,_SCD1,_NMTypes1),
-	Line2 = clinfo(NMSTR2,_MRRank2,_CUI2,_LineData2,_TS2,_STT2,_TTY2,_STR2,_SAB2,_SCD2,_NMTypes2),
+	Line1 = clinfo(NMSTR1,_MRRank1,_CUI1,_LUI1,_SUI1,_LineData1,
+		       _TS1,_STT1,_TTY1,_STR1,_SAB1,_CODE1,_NMTypes1),
+	Line2 = clinfo(NMSTR2,_MRRank2,_CUI2,_LUI2,_SUI2,_LineData2,
+		       _TS2,_STT2,_TTY2,_STR2,_SAB2,_CODE2,_NMTypes2),
 	NMSTR2 == NMSTR1.
 
 % filter_by_term_status(+CLInfoLines, +OutputStream, -FilteredCLInfoLines)
@@ -704,7 +680,8 @@ filter_by_term_status([], _OutputStream, TSCounts, TSCounts, [], []).
 filter_by_term_status([CLInfoLine|RestCLInfoLines], OutputStream,
 		      TSCountsIn, TSCountsOut,
 		      [CLInfoLine|RestExcluded], FilteredRest) :-
-	CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LineData,TS,_STT,_TTY,_STR,_SAB,_SCD,_NMTypes),
+	CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
+			    TS,_STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
 	excluded_term_status(TS),
 	!,
 	update_term_status_count(TS, 1, TSCountsIn, TSCountsNext),
@@ -747,7 +724,8 @@ filter_syntactically([], _, SyntaxCounts, SyntaxCounts, [], []).
 filter_syntactically([CLInfoLine|Rest], OutputStream,
 		     SyntaxCountsIn, SyntaxCountsOut,
 		     [CLInfoLine|RestExcluded], FilteredRest) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,CUI,_LineData,_TS,_STT,_TTY,_STR,SAB,SCD,_NMTypes),
+	CLInfoLine = clinfo(NMSTR,_MRRank,CUI,_LUI,_SUI,_LineData,
+			    _TS,_STT,_TTY,_STR,SAB,CODE,_NMTypes),
 	atom_codes(NMSTR, NMSTRString),
 	parse_it(NMSTRString, minimal_syntax(Phrases)),
 	length(Phrases, MSUCount), % number of minimal syntactic units (i.e., phrases)
@@ -755,7 +733,7 @@ filter_syntactically([CLInfoLine|Rest], OutputStream,
 	  simplify_all_phrases(Phrases, SUs0),
 	  append(SUs0, SUs),
 	  length(SUs, SyntaxCount), % number of syntactic items (e.g., shapes, mod, ...)
-	  generate_dump_syntax_only_output(SyntaxCount, MSUCount, CUI, SCD, SAB, OutputStream)
+	  generate_dump_syntax_only_output(SyntaxCount, MSUCount, CUI, CODE, SAB, OutputStream)
 	; \+ is_syntactically_simple(Phrases, MSUCount),   % do the filtering
 	  update_syntax_count(synt, 1, SyntaxCountsIn, SyntaxCountsNext)
 	),
@@ -769,15 +747,15 @@ filter_syntactically([First|Rest], OutputStream,
 	filter_syntactically(Rest, OutputStream,
 			     SyntaxCountsIn, SyntaxCountsOut, Excluded, FilteredRest).
 
-generate_dump_syntax_only_output(SyntaxCount, MSUCount, CUI, SCD, SAB, OutputStream) :-
+generate_dump_syntax_only_output(SyntaxCount, MSUCount, CUI, CODE, SAB, OutputStream) :-
 	( SyntaxCount =:= 0 ->
 	  format(OutputStream,
 		 '1|1|~a|~a|~a|~a|~p~n',
-		 [CUI,SAB,SCD,NMSTR,SUs0]),
+		 [CUI,SAB,CODE,NMSTR,SUs0]),
 	  flush_output(OutputStream)
 	; format(OutputStream,
 		 '~d|~d|~a|~a|~a|~a|~p~n',
-		 [MSUCount,SyntaxCount,CUI,SAB,SCD,NMSTR,SUs0]),
+		 [MSUCount,SyntaxCount,CUI,SAB,CODE,NMSTR,SUs0]),
 	  flush_output(OutputStream)
 	).
 
@@ -841,7 +819,8 @@ write_clinfo_lines/2.  See filter_and_write/2.  */
 
 write_clinfo_lines([], _).
 write_clinfo_lines([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,LineData,_TS,_STT,_TTY,_STR,_SAB,_SCD,_NMTypes),
+	CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
+			    _TS,_STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
 	% y == "yes": the line survived filtering
 	format(OutputStream, 'y|~a~n', [LineData]),
 	flush_output(OutputStream),
@@ -894,10 +873,11 @@ write_syntax_counts([pref-PrefCount,synt-SyntCount], OutputStream) :-
 	flush_output(OutputStream).
 
 get_mrrank(SAB, TTY, Line, MRRank) :-
-	( mrrank(SAB, TTY, MRRank) ->
+	( mrrank(SAB, TTY, MRRank, _SUPPRESS) ->
 	  true
 	; control_value(mrrank_file, FileName),
-	  format(user_output, '### ERROR: SAB/TTY ~w/~w in line~n~*c~s~n~*cnot defined in MRRANK file ~w.~n',
+	  format(user_output,
+		 '### ERROR: SAB/TTY ~w/~w in line~n~*c~s~n~*cnot defined in MRRANK file ~w.~n',
 		 [SAB,TTY,11,32,Line,11,32,FileName]),
 	  abort
 	).
