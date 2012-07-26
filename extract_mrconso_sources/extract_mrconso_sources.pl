@@ -12,15 +12,20 @@
 	go/0
     ]).
 
-:- use_module(mm_tools_lib(factbase),[
-	erase_all_facts/2,
-	erase_fact/3,
-	put_fact/3
-    ]).
+% :- load_files(library(detcheck), [when(compile_time), if(changed)]).
+
+% :- use_module(mm_tools_lib(factbase),[
+% 	erase_all_facts/2,
+% 	erase_fact/3,
+% 	put_fact/3
+%     ]).
 
 :- use_module(mm_tools_lib(mwi_utilities),[
+	announce_lines/4,
 	compute_unique_filename/3,
 	fget_non_null_line/2,
+	get_progress_bar_interval/1,
+	get_total_lines/1,
 	parse_record/3,
 	normalize_meta_string/3
     ]).
@@ -63,7 +68,6 @@
     ]).
 
 
-
 /* go
    go(+HaltFlag)
    go(+HaltFlag, +CommandLineTerm)
@@ -79,18 +83,18 @@ go(HaltOption) :-
     parse_command_line(CLTerm),
     go(HaltOption,CLTerm).
 
-go(HaltOption,command_line(Options,Args)) :-
-    add_portray(portray_strings_double_quoted),
-    reset_control_options(extract_mrconso_sources),
-    format('~nExtract mrconso Sources~n',[]),
-    (initialize_extract_mrconso_sources(Options,Args,InterpretedArgs) ->
-        (extract_mrconso_sources(InterpretedArgs); true)
-    ;   usage
-    ),
-    (HaltOption==halt ->
-        halt
-    ;   true
-    ).
+go(HaltOption, command_line(Options,Args)) :-
+	add_portray(portray_strings_double_quoted),
+	reset_control_options(extract_mrconso_sources),
+	format('~nExtract mrconso Sources~n', []),
+	( initialize_extract_mrconso_sources(Options,Args,InterpretedArgs) ->
+	  extract_mrconso_sources(InterpretedArgs)
+	; usage
+	),
+	( HaltOption == halt ->
+	  halt
+	; true
+	).
 
 
 /* initialize_extract_mrconso_sources(+Options, +Args, -InterpretedArgs)
@@ -133,49 +137,49 @@ usage :-
 extract_mrconso_sources/1 controls all extract_mrconso_sources processing.  */
 
 extract_mrconso_sources(InterpretedArgs) :-
-    get_from_iargs(infile,name,InterpretedArgs,InputFile),
-    get_from_iargs(infile,stream,InterpretedArgs,InputStream),
-    get_from_iargs(outfile,name,InterpretedArgs,OutputFile),
-    get_from_iargs(outfile,stream,InterpretedArgs,OutputStream),
-    format('Processing ~a --> ~a.~n',[InputFile,OutputFile]),
-    process_input(InputStream,OutputStream),
-    close(OutputStream),
-    close(InputStream),
-    format('~nFinished.~n~n',[]),
-    !.
-
+	get_from_iargs(infile, name, InterpretedArgs, InputFile),
+	get_from_iargs(infile, stream, InterpretedArgs, InputStream),
+	get_from_iargs(outfile, name, InterpretedArgs, OutputFile),
+	get_from_iargs(outfile, stream, InterpretedArgs, OutputStream),
+	format('Processing ~a --> ~a.~n', [InputFile,OutputFile]),
+	get_progress_bar_interval(Interval),
+	get_total_lines(TotalLines),
+	process_input(InputStream, OutputStream, InputFile, Interval, TotalLines),
+	close(OutputStream),
+	close(InputStream),
+	format('~nFinished.~n~n', []),
+	!.
 
 /* process_input(+InputStream, +OutputStream)
 
 process_input/2 reads lines from InputStream and writes source information to
 OutputStream.  */
 
-process_input(InputStream,OutputStream) :-
-    erase_all_facts(saved,info),
-    fget_non_null_line(InputStream,Line0),
-    parse_line(Line0,CUI0,SUI0,STR0,SAB0,TTY0),
-    put_fact(saved,info,[CUI0,[cuiinfo(CUI0,SUI0,Line0,STR0,SAB0,TTY0)]]),
-    repeat,
-    maybe_atom_gc(_,_),
-    (erase_fact(saved,info,[CUI,CUIInfoLines0]) ->
-        process_cui(InputStream,OutputStream,CUI,CUIInfoLines0),
-        fail
-    ;   true
-    ),
-    !.
-
+process_input(InputStream, OutputStream, InputFile, Interval, TotalLines) :-
+	% erase_all_facts(saved, info),
+	fget_non_null_line(InputStream, Line0),
+	NumLines is 1,
+	parse_line(Line0, CUI0, SUI0, STR0, SAB0, TTY0),
+	% put_fact(saved,info, [CUI0, [cuiinfo(CUI0,SUI0,Line0,STR0,SAB0,TTY0)]]),
+	CUIInfo = cuiinfo(CUI0,SUI0,Line0,STR0,SAB0,TTY0),
+	maybe_atom_gc(_, _),
+	process_cui(InputStream, OutputStream, InputFile,
+		    NumLines, Interval, TotalLines,
+		    CUI0, [CUIInfo]).
 
 /* parse_line(+Line, -CUI, -SUI, -STR, -SAB, -TTY)
 
 parse_line/6 extracts CUI, ... from Line.  */
 
-parse_line(Line,CUI,SUI,STR,SAB,TTY) :-
-    parse_record(Line,"|",[CLS,_N,_TS,_STT,STR,SAB,TTY,_SCD]),
-    parse_record(CLS,":",[CUI,_LUI,SUI]),
-    !.
-parse_line(Line,_,_,_,_,_) :-
-    format('~NFatal error: Bad input ~s~n',[Line]),
-    halt.
+parse_line(Line, CUI, SUI, STR, SAB, TTY) :-
+	parse_record(Line, "|", [CUI,_LAT,_TS,_LUI,_STT,SUI,_ISPREF,_AUI,_SAUI,_SCUI,_SDUI,
+				 SAB,TTY,_CODE,STR,_SRL,_SUPPRESS,_CVF]),
+	% parse_record(Line, "|", [CLS,_N,_TS,_STT,STR,SAB,TTY,_SCD]),
+	% parse_record(CLS, ":", [CUI,_LUI,SUI]),
+	!.
+parse_line(Line, _, _, _, _, _) :-
+	format('~NFatal error: Bad input ~s~n', [Line]),
+	halt.
 
 
 /* process_cui(+InputStream, +OutputStream, +CUI, +CUIInfoLines)
@@ -186,20 +190,26 @@ CUI as the input.  When a new CUI is encountered, the accumulated
 information is written to OutputStream. The information from
 the current line is saved for further processing.  */
 
-process_cui(InputStream,OutputStream,CUI0,CUIInfoLines0) :-
-    repeat,
-    (fget_non_null_line(InputStream,Line) ->
-        parse_line(Line,CUI,SUI,STR,SAB,TTY),
-        (CUI==CUI0 ->
-            process_cui(InputStream,OutputStream,CUI0,
-                            [cuiinfo(CUI,SUI,Line,STR,SAB,TTY)|CUIInfoLines0])
-        ;   write_cuiinfo(OutputStream,CUIInfoLines0),
-            put_fact(saved,info,[CUI,[cuiinfo(CUI,SUI,Line,STR,SAB,TTY)]])
-        )
-    ;   write_cuiinfo(OutputStream,CUIInfoLines0)
-    ),
-    !.
-
+process_cui(InputStream, OutputStream, InputFile,
+	    NumLinesIn, Interval, TotalLines,
+	    CUI0, CUIInfoLines0) :-
+	( fget_non_null_line(InputStream, Line) ->
+	  NumLinesNext is NumLinesIn + 1,
+	  announce_lines(NumLinesNext, Interval, TotalLines, InputFile),
+	  parse_line(Line, CUI, SUI, STR, SAB, TTY),
+	  ( CUI == CUI0 ->
+            process_cui(InputStream, OutputStream, InputFile,
+			NumLinesNext, Interval, TotalLines,
+			CUI0, [cuiinfo(CUI,SUI,Line,STR,SAB,TTY)|CUIInfoLines0])
+          ; write_cuiinfo(OutputStream,CUIInfoLines0),
+	    process_cui(InputStream, OutputStream, InputFile,
+			NumLinesNext, Interval, TotalLines,
+			CUI, [cuiinfo(CUI,SUI,Line,STR,SAB,TTY)])
+            % put_fact(saved,info,[CUI,[cuiinfo(CUI,SUI,Line,STR,SAB,TTY)]])
+	  )
+	; write_cuiinfo(OutputStream, CUIInfoLines0)
+	),
+	!.
 
 /* write_cuiinfo(+OutputStream, +CUIInfoLines)
    write_cuiinfo(+CUIInfoLines, +I, +OutputStream)
@@ -210,31 +220,27 @@ write_cuiinfo/3 and write_cuiinfo/4 are auxiliaries which keep track of the
 ith record for a given CUI and, in the case of /4, the sources that have already
 been written. */
 
-write_cuiinfo(OutputStream,CUIInfoLines0) :-
-    rev(CUIInfoLines0,CUIInfoLines),
-    (control_option(first_of_each_source_only) ->
-	write_cuiinfo(CUIInfoLines,1,[],OutputStream)
-    ;   write_cuiinfo(CUIInfoLines,1,OutputStream)
-    ),
-    !.
+write_cuiinfo(OutputStream, CUIInfoLines0) :-
+	rev(CUIInfoLines0, CUIInfoLines),
+	( control_option(first_of_each_source_only) ->
+	  write_cuiinfo(CUIInfoLines, 1, [], OutputStream)
+	; write_cuiinfo(CUIInfoLines, 1, OutputStream)
+	),
+	!.
 
-write_cuiinfo([],_,_) :-
-    !.
-write_cuiinfo([cuiinfo(CUI,SUI,_Line,STR,SAB,TTY)|Rest],I,OutputStream) :-
-    format(OutputStream,'~s|~s|~d|~s|~s|~s~n',[CUI,SUI,I,STR,SAB,TTY]),
-    NewI is I + 1,
-    write_cuiinfo(Rest,NewI,OutputStream).
+write_cuiinfo([], _, _).
+write_cuiinfo([cuiinfo(CUI,SUI,_Line,STR,SAB,TTY)|Rest], I, OutputStream) :-
+	format(OutputStream, '~s|~s|~d|~s|~s|~s~n', [CUI,SUI,I,STR,SAB,TTY]),
+	NewI is I + 1,
+	write_cuiinfo(Rest, NewI, OutputStream).
 
-write_cuiinfo([],_,_,_) :-
-    !.
-write_cuiinfo([cuiinfo(_CUI,_SUI,_Line,_STR,SAB,_TTY)|Rest],I,Sources,
-	      OutputStream) :-
-    memberchk(SAB,Sources),
-    !,
-    write_cuiinfo(Rest,I,Sources,OutputStream).
-write_cuiinfo([cuiinfo(CUI,SUI,_Line,STR,SAB,TTY)|Rest],I,Sources,
-	      OutputStream) :-
-    !,
-    format(OutputStream,'~s|~s|~d|~s|~s|~s~n',[CUI,SUI,I,STR,SAB,TTY]),
-    NewI is I + 1,
-    write_cuiinfo(Rest,NewI,[SAB|Sources],OutputStream).
+write_cuiinfo([], _, _, _).
+write_cuiinfo([cuiinfo(_CUI,_SUI,_Line,_STR,SAB,_TTY)|Rest], I, Sources, OutputStream) :-
+	memberchk(SAB, Sources),
+	!,
+	write_cuiinfo(Rest, I, Sources, OutputStream).
+write_cuiinfo([cuiinfo(CUI,SUI,_Line,STR,SAB,TTY)|Rest], I, Sources, OutputStream) :-
+	!,
+	format(OutputStream, '~s|~s|~d|~s|~s|~s~n', [CUI,SUI,I,STR,SAB,TTY]),
+	NewI is I + 1,
+	write_cuiinfo(Rest, NewI, [SAB|Sources], OutputStream).

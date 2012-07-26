@@ -208,7 +208,9 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
 	  % atom_codes(LineAtom, Line),
 	  % format(user_output, 'LINE ~d: ~w~n', [NumLinesProcessed, LineAtom]),
           split_string_completely(Line, "|",
-				  [CUI0,_Language,TermStatus,_LUI,StringType,SUI,String|_]),
+				  % [CUI0,_Language,TermStatus,_LUI,StringType,SUI,String|_]),
+				  [CUI0,_LAT,TS,_LUI,STT,SUI,_ISPREF,_AUI,_SAUI,_SCUI,_SDUI,
+				   _SAB,_TTY,_CODE,String,_SRL,_SUPPRESS,_CVF|_]),
           normalize_meta_string(String, NormalizedString, _NMTypes),
 
 	  % SUIOutputStream writes to strings.gleaned
@@ -217,7 +219,7 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
           % first_term_is_concept is a default option for glean_mrcon
 
 	  handle_CUIs(FirstTermIsConcept, GenerateCUIs, CUIOutputStream,
-		      CUI0, CurrentCUI, TermStatus, String, StringType, CUI),
+		      CUI0, CurrentCUI, TS, String, STT, CUI),
 
           tokenize_text_mm(NormalizedString, WordStrings),
           ( is_filtered_out(WordStrings) ->

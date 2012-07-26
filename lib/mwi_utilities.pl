@@ -5,9 +5,12 @@
 
 
 :- module(mwi_utilities,[
+	announce_lines/4,
 	compute_unique_filename/3,
 	fget_non_null_line/2,
 	generate_syntactic_analysis/3,
+	get_progress_bar_interval/1,
+	get_total_lines/1,
 	normalize_meta_string/2,
 	normalize_meta_string/3,
 	parse_record/2,
@@ -34,6 +37,10 @@
 	consult_tagged_text/5
    ]).
 
+:- use_module(skr_lib(efficiency),[
+	maybe_atom_gc/2
+    ]).
+
 :- use_module(skr_lib(generate_varinfo),[
 	generate_variant_info/2
     ]).
@@ -59,6 +66,11 @@
 	syntactic_uninvert_string/2,
 	trim_whitespace/2,
 	trim_whitespace_left/2
+    ]).
+
+:- use_module(skr_lib(nls_system),[
+	control_option/1,
+	control_value/2
     ]).
 
 :- use_module(skr_lib(ctypes),[
@@ -341,3 +353,45 @@ normalize_string(String,NormString,NormTypes) :-
     ;   append(NormTypes0,[nos],NormTypes)
     ).
 
+
+% Announce how many lines have been processed every Interval lines
+% and at the very last line.
+announce_lines(NumLines, Interval, TotalLines, InputFile) :-
+	( TotalLines > 0 ->
+	  announce_lines_with_total(NumLines, Interval, TotalLines, InputFile)
+	; announce_lines_without_total(NumLines, Interval, InputFile)
+	).
+
+announce_lines_without_total(NumLines, Interval, InputFile) :-
+	( 0 is NumLines mod Interval ->
+	  maybe_atom_gc(_, _),
+	  format(user_output,
+		 '~NProcessed ~d lines of file ~w~n',
+		 [NumLines,InputFile])
+	; true
+	).
+
+announce_lines_with_total(NumLines, Interval, TotalLines, InputFile) :-
+	( NumLines is TotalLines ->
+	  format(user_output,
+		 '~NCOMPLETED ~d of ~w lines of file ~w~n',
+		 [NumLines,TotalLines,InputFile])
+	; 0 is NumLines mod Interval ->
+	  maybe_atom_gc(_, _),
+	  format(user_output,
+		 '~NProcessed ~d of ~w lines of file ~w~n',
+		 [NumLines,TotalLines,InputFile])
+	; true
+	).
+
+get_progress_bar_interval(Interval) :-
+	( control_value(progress_bar_interval, Interval) ->
+	  true
+	; Interval = 1000
+	).
+
+get_total_lines(TotalLines) :-
+	( control_value(total_lines, TotalLines) ->
+	  true
+	; TotalLines = -9999
+	).

@@ -12,7 +12,10 @@
     ]).
 
 :- use_module(mm_tools_lib(mwi_utilities),[
+	announce_lines/4,
 	fget_non_null_line/2,
+	get_progress_bar_interval/1,
+	get_total_lines/1,
 	compute_unique_filename/3
     ]).
 
@@ -29,23 +32,24 @@
     ]).
 
 :- use_module(skr_lib(nls_strings),[
+	atom_codes_list/2,
 	portray_strings_double_quoted/1,
 	split_string_completely/3
     ]).
 
 :- use_module(skr_lib(nls_system),[
-	get_control_options_for_modules/2,
-	reset_control_options/1,
-	toggle_control_options/1,
-	set_control_values/2,
-	display_control_options_for_modules/2,
-	display_current_control_options/2,
 	control_option/1,
 	control_value/2,
-	parse_command_line/1,
-	interpret_options/4,
+	display_control_options_for_modules/2,
+	display_current_control_options/2,
+	get_control_options_for_modules/2,
+	get_from_iargs/4,
 	interpret_args/4,
-	get_from_iargs/4
+	interpret_options/4,
+	parse_command_line/1,
+	reset_control_options/1,
+	set_control_values/2,
+	toggle_control_options/1
     ]).
 
 :- use_module(skr_lib(sicstus_utils),[
@@ -64,25 +68,24 @@ go/0 is the executive predicate for glean_ambig.
 go/0 uses go/1 with HaltFlag set to halt.
 go/1 parses the command line and calls go/2 which controls the processing.  */
 
-go :-
-    go(halt).
+go :- go(halt).
 
 go(HaltOption) :-
-    parse_command_line(CLTerm),
-    go(HaltOption,CLTerm).
+	parse_command_line(CLTerm),
+	go(HaltOption, CLTerm).
 
-go(HaltOption,command_line(Options,Args)) :-
-    add_portray(portray_strings_double_quoted),
-    reset_control_options(glean_ambig),
-    format('~nGlean Ambiguity~n',[]),
-    (initialize_glean_ambig(Options,Args,InterpretedArgs) ->
-        (glean_ambig(InterpretedArgs); true)
-    ;   usage
-    ),
-    (HaltOption==halt ->
-        halt
-    ;   true
-    ).
+go(HaltOption, command_line(Options,Args)) :-
+	add_portray(portray_strings_double_quoted),
+	reset_control_options(glean_ambig),
+	format('~nGlean Ambiguity~n',[]),
+	( initialize_glean_ambig(Options,Args,InterpretedArgs) ->
+	  glean_ambig(InterpretedArgs)
+	; usage
+	),
+	( HaltOption == halt ->
+	  halt
+	; true
+	).
 
 
 /* initialize_glean_ambig(+Options, +Args, -InterpretedArgs)
@@ -106,10 +109,18 @@ initialize_glean_ambig(Options,Args,InterpretedArgs) :-
     interpret_args(IOptions,ArgSpec,Args,InterpretedArgs),
     toggle_control_options(IOptions),
     set_control_values(IOptions,InterpretedArgs),
+    compile_mrrank_file,
     default_release(Release),
     display_current_control_options(glean_ambig, Release),
     !.
 
+compile_mrrank_file :-
+	( control_value(mrrank_file, FileName) ->
+	  compile(FileName)
+	; format(user_output, 'Must specify mrrank file with -R option.\n', []),
+	  flush_output(user_output),
+	  abort
+	).
 
 /* usage
 
@@ -128,75 +139,84 @@ usage :-
 glean_ambig/1 controls all glean_ambig processing.  */
 
 glean_ambig(InterpretedArgs) :-
-    get_from_iargs(infile,name,InterpretedArgs,InputFile),
-    get_from_iargs(infile,stream,InterpretedArgs,InputStream),
-    get_from_iargs(outfile,name,InterpretedArgs,OutputFile),
-    get_from_iargs(outfile,stream,InterpretedArgs,OutputStream),
-    get_from_iargs(suppoutfile,name,InterpretedArgs,SuppOutputFile),
-    get_from_iargs(suppoutfile,stream,InterpretedArgs,SuppOutputStream),
-    format('Processing ~a --> ~a and ~a.~n',
-	   [InputFile,OutputFile,SuppOutputFile]),
-    process_input(InputStream,OutputStream,SuppOutputStream),
-    close(SuppOutputStream),
-    close(OutputStream),
-    close(InputStream),
-    format('~nFinished.~n~n',[]),
-    !.
+	get_from_iargs(infile,      name,   InterpretedArgs, InputFile),
+	get_from_iargs(infile,      stream, InterpretedArgs, InputStream),
+	get_from_iargs(outfile,     name,   InterpretedArgs, OutputFile),
+	get_from_iargs(outfile,     stream, InterpretedArgs, OutputStream),
+	get_from_iargs(suppoutfile, name,   InterpretedArgs, SuppOutputFile),
+	get_from_iargs(suppoutfile, stream, InterpretedArgs, SuppOutputStream),
+	get_progress_bar_interval(Interval),
+	get_total_lines(TotalLines),
+	format('Processing ~a --> ~a and ~a.~n', [InputFile,OutputFile,SuppOutputFile]),
+	process_input(InputStream, OutputStream, SuppOutputStream, InputFile, Interval, TotalLines),
+	close(SuppOutputStream),
+	close(OutputStream),
+	close(InputStream),
+	format('~nFinished.~n~n',[]),
+	!.
 
 
-/* process_input(+InputStream, +OutputStream, +SuppOutputStream)
+/* process_input(InputStream, OutputStream, SuppOutputStream, InputFile, Interval, TotalLines),
+   
+process_input/6 reads lines from InputStream and writes to OutputStream and SuppOutputStream. */
 
-process_input/3 reads lines from InputStream and writes to OutputStream and
-SuppOutputStream. */
-
-process_input(InputStream, OutputStream, SuppOutputStream) :-
+process_input(InputStream, OutputStream, SuppOutputStream, InputFile, Interval, TotalLines) :-
 	fget_non_null_line(InputStream, Line0),
-	parse_line(Line0, CUI0, TS0, LUI0, SUI0, LCString0),
+	parse_line(Line0, CUI0, TS0, LUI0, SUI0, SAB0, TTY0, SUPPRESS0, LCString0),
 	maybe_atom_gc(_,_),
 	SuppCaseNum is 0,
 	UnSuppCaseNum is 0,
+	NumLines is 1,
 	process_case(InputStream, OutputStream, SuppOutputStream,
+		     InputFile, NumLines, Interval, TotalLines,
 		     SuppCaseNum, UnSuppCaseNum,
-		     LCString0, [CUI0-TS0-LUI0-SUI0]).
+		     LCString0, [CUI0-TS0-LUI0-SUI0-SAB0-TTY0-SUPPRESS0]).
 
 
-/* parse_line(+Line, -CUI, -TS, -LUI, -SUI, -LCString)
+/* parse_line(+Line, -CUI, -TS, -LUI, -SUI, -SABAtom, -TTYAtom, -SUPPRESS, -LCString)
 
-parse_line/6 extracts CUI, TS, LUI, SUI and LCString from Line. */
+parse_line/9 extracts CUI, TS, LUI, SUI, SUPPRESS and LCString from Line. */
 
-parse_line(Line, CUIAtom, TSAtom, LUIAtom, SUIAtom, LCAtom) :-
+parse_line(Line, CUIAtom, TSAtom, LUIAtom, SUIAtom, SABAtom, TTYAtom, SUPPRESSAtom, LCAtom) :-
 	( split_string_completely(Line, "|",
-				  [CUIString,_,TSString,LUIString,_,SUIString,_,_,LCString]) ->
-	  atom_codes(CUIAtom, CUIString),
-	  atom_codes(TSAtom,  TSString),
-	  atom_codes(LUIAtom, LUIString),
-	  atom_codes(SUIAtom, SUIString),
-	  atom_codes(LCAtom,  LCString)
+				  % [CUIString,_,TSString,LUIString,_,SUIString,_,_,LCString]) ->
+				  [CUIString,_LAT,TSString,LUIString,_STT,SUIString,
+				   _ISPREF,_AUI,_SAUI,_SCUI,_SDUI,SABString,TTYString,_CODE,
+				   _STR,_SRL,SUPPRESSString,_CVF,LCString]) ->
+	  atom_codes_list([CUIAtom,TSAtom,LUIAtom,SUIAtom,
+			   SABAtom, TTYAtom,SUPPRESSAtom,LCAtom],
+			  [CUIString,TSString,LUIString,SUIString,
+			   SABString,TTYString,SUPPRESSString,LCString])
 	; format(user_output, '~NFatal error: Bad input ~s~n', [Line]),
 	  ttyflush,
 	  halt
 	).
 
 /* process_case(+InputStream, +OutputStream, +SuppOutputStream,
+		+InputFile, +NumLines, +Interval, +TotalLines,
    	        +SuppCaseNum, +UnSuppCaseNum,
-		+LCString, +CTLSList)
+		+LCString, +FieldList)
    
-process_case/5 accumulates CTLSList (a list of terms of the form CUI-TS-LUI-SUI)
+process_case/5 accumulates FieldsList (a list of terms of the form CUI-TS-LUI-SUI)
 with the same LCString by reading Line from InputStream.
 When a new LCString is encountered, the accumulated information is written
 to OutputStream and SuppOutputStream. */
 
 process_case(InputStream, OutputStream, SuppOutputStream,
-	     SuppCaseNumIn, UnSuppCaseNumIn, LCString0, CTLSList) :-
+	     InputFile, NumLinesIn, Interval, TotalLines,
+	     SuppCaseNumIn, UnSuppCaseNumIn, LCString0, FieldsList) :-
 	maybe_atom_gc(_,_),
 	( fget_non_null_line(InputStream, Line) ->
-	  parse_line(Line, CUI, TS, LUI, SUI, LCString),
+	  NumLinesNext is NumLinesIn + 1,
+	  announce_lines(NumLinesNext, Interval, TotalLines, InputFile),
+	  parse_line(Line, CUI, TS, LUI, SUI, SAB, TTY, SUPPRESS, LCString),
 	  maybe_write_results(LCString, LCString0,
 			      InputStream, OutputStream, SuppOutputStream,
+			      InputFile, NumLinesNext, Interval, TotalLines,
 			      SuppCaseNumIn, UnSuppCaseNumIn,
-			      CUI, TS, LUI, SUI, CTLSList)
+			      CUI, TS, LUI, SUI, SAB, TTY, SUPPRESS, FieldsList)
 	  % finish up the last batch
-	; write_results(CTLSList, LCString0,
+	; write_results(FieldsList, LCString0,
 			OutputStream,    SuppOutputStream,
 			SuppCaseNumIn,   UnSuppCaseNumIn,
 			_SuppCaseNumOut, _UnSuppCaseNumOut)
@@ -204,72 +224,78 @@ process_case(InputStream, OutputStream, SuppOutputStream,
 
 maybe_write_results(LCString, LCString0,
 		    InputStream, OutputStream, SuppOutputStream,
+		    InputFile, NumLines, Interval, TotalLines,
 		    SuppCaseNumIn, UnSuppCaseNumIn,
-		    CUI, TS, LUI, SUI, CTLSList) :-
+		    CUI, TS, LUI, SUI, SAB, TTY, SUPPRESS, FieldsList) :-
+	  FieldTerm = CUI-TS-LUI-SUI-SAB-TTY-SUPPRESS,
 	  ( LCString == LCString0 ->
 	    process_case(InputStream, OutputStream, SuppOutputStream,
+			 InputFile, NumLines, Interval, TotalLines,
 			 SuppCaseNumIn, UnSuppCaseNumIn,
-			 LCString, [CUI-TS-LUI-SUI|CTLSList])
-	  ; write_results(CTLSList, LCString0,
+			 LCString, [FieldTerm|FieldsList])
+	  ; write_results(FieldsList, LCString0,
 			  OutputStream, SuppOutputStream,
 			  SuppCaseNumIn, UnSuppCaseNumIn,
 			  SuppCaseNumOut, UnSuppCaseNumOut),
 	    process_case(InputStream, OutputStream, SuppOutputStream,
-			 SuppCaseNumOut, UnSuppCaseNumOut,
-			 LCString, [CUI-TS-LUI-SUI])
+			 InputFile, NumLines, Interval, TotalLines,
+			 SuppCaseNumOut, UnSuppCaseNumOut, 
+			 LCString, [FieldTerm])
 	  ).
 
-/* write_results(+CTLS, +LCString,
+/* write_results(+Fields, +LCString,
    		 +OutputStream, +SuppOutputStream,
    		 +SuppCaseNumIn, +UnSuppCaseNumIn,
    		 -SuppCaseNumOut, -UnSuppCaseNumOut)
 
 
-write_results/4 writes ambiguity cases defined by LCString and CTLSs
+write_results/4 writes ambiguity cases defined by LCString and Fieldss
 (a list of quadruples CUI-TS-LUI-SUI) to OutputStream and SuppOutputStream.
 Cases including suppressibles are written to OutputStream, and those without
 suppressibles are written to SuppOutputStream. */
 
-write_results(CTLSList0, LCString, OutputStream, SuppOutputStream,
+write_results(FieldsList0, LCString, OutputStream, SuppOutputStream,
 	      SuppCaseNumIn,  UnSuppCaseNumIn,
 	      SuppCaseNumOut, UnSuppCaseNumOut) :-
-	rev(CTLSList0, CTLSList),
-	maybe_write_case(CTLSList, LCString, OutputStream, UnSuppCaseNumIn, UnSuppCaseNumOut), 
-	filter_ctlss(CTLSList, SuppCTLSList),
-	maybe_write_case(SuppCTLSList, LCString, SuppOutputStream, SuppCaseNumIn, SuppCaseNumOut).
+	rev(FieldsList0, FieldsList),
+	maybe_write_case(FieldsList, LCString, OutputStream, UnSuppCaseNumIn, UnSuppCaseNumOut),
+	filter_fields(FieldsList, SuppFieldsList),
+	maybe_write_case(SuppFieldsList, LCString, SuppOutputStream, SuppCaseNumIn, SuppCaseNumOut).
 
-maybe_write_case(CTLSList, LCString, OutputStream, UnSuppCaseNumIn, UnSuppCaseNumOut) :-
-	compute_degree_of_ambiguity(CTLSList, N),
-	( N > 1 ->
-	  UnSuppCaseNumOut is UnSuppCaseNumIn + 1,
-	  write_case(CTLSList, UnSuppCaseNumOut, N, LCString, OutputStream)
-	; UnSuppCaseNumOut is UnSuppCaseNumIn
+maybe_write_case(FieldsList, LCString, OutputStream, CaseNumIn, CaseNumOut) :-
+	compute_degree_of_ambiguity(FieldsList, DegreeOfAmbiguity),
+	( DegreeOfAmbiguity > 1 ->
+	  CaseNumOut is CaseNumIn + 1,
+	  write_case(FieldsList, CaseNumOut, DegreeOfAmbiguity, LCString, OutputStream)
+	; CaseNumOut is CaseNumIn
 	).
 
-compute_degree_of_ambiguity(CTLSs, N) :-
-	extract_cuis(CTLSs, CUIs0),
+compute_degree_of_ambiguity(FieldsList, DegreeOfAmbiguity) :-
+	extract_cuis(FieldsList, CUIs0),
 	sort(CUIs0, CUIs),
-	length(CUIs, N).
+	length(CUIs, DegreeOfAmbiguity).
 
 extract_cuis([], []).
-extract_cuis([CUI-_TS-_LUI-_SUI|Rest], [CUI|ExtractedRest]) :-
+extract_cuis([CUI-_TS-_LUI-_SUI-_SAB-_TTY-_SUPPRESS|Rest], [CUI|ExtractedRest]) :-
 	extract_cuis(Rest, ExtractedRest).
 
-filter_ctlss([], []).
-filter_ctlss([First|Rest], Filtered) :-
-	First = _CUI-TS-_LUI-_SUI,
-	( suppressible_term_status(TS) ->
-	  Filtered = FilteredRest,
-	  filter_ctlss(Rest, FilteredRest)
-	; Filtered = [First|FilteredRest],
-	  filter_ctlss(Rest, FilteredRest)
-	).
+filter_fields([], []).
+filter_fields([First|Rest], Filtered) :-
+	First = _CUI-_TS-_LUI-_SUI-SAB-TTY-SUPPRESS,
+	( suppressible_atom(SUPPRESS, SAB, TTY) ->
+	  Filtered = FilteredRest
+	; Filtered = [First|FilteredRest]
+	),
+	filter_fields(Rest, FilteredRest).
 
-suppressible_term_status(p).
-suppressible_term_status(s).
+suppressible_atom('Y', _SAB, _TTY).
+suppressible_atom('E', _SAB, _TTY).
+suppressible_atom('O', _SAB, _TTY).
+suppressible_atom('N',  SAB,  TTY) :-
+	mrrank(SAB, TTY, _MRRANK, 'Y').
 
-write_case([], _, _, _, _).
-write_case([CTLS|Rest], CN, N, LCString, Stream) :-
-	CTLS = CUI-_TS-LUI-SUI,
-	format(Stream, '~d|~d|~a|~a|~a|~a~n', [CN,N,CUI,LUI,SUI,LCString]),
-	write_case(Rest, CN, N, LCString, Stream).
+write_case([], _, _, _, Stream) :- flush_output(Stream).
+write_case([Fields|Rest], CaseNum, DegreeOfAmbiguity, LCString, Stream) :-
+	Fields = CUI-_TS-LUI-SUI-_SAB-_TTY-_SUPPRESS,
+	format(Stream, '~d|~d|~a|~a|~a|~a~n', [CaseNum,DegreeOfAmbiguity,CUI,LUI,SUI,LCString]),
+	write_case(Rest, CaseNum, DegreeOfAmbiguity, LCString, Stream).

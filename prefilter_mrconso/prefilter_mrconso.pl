@@ -203,36 +203,36 @@ prefilter_mrconso(InterpretedArgs) :-
 process_input/2 reads lines from InputStream and writes filtered lines to
 OutputStream.  */
 
-process_input(InputStream,OutputStream) :-
-    erase_all_facts(saved,info),
-    fget_non_null_line(InputStream,Line0),
-    parse_line(Line0,CUI0,LUI0,SUI0,N0,TS0,STT0,STR0,SAB0,TTY0,CODE0,LRL0,SRL0),
-    lower(STR0,LCSTR0),
-    put_fact(saved,info,[CUI0,LUI0,[clinfo(Line0,CUI0,LUI0,SUI0,N0,TS0,STT0,
-					   STR0,SAB0,TTY0,CODE0,LRL0,SRL0,
-					   LCSTR0)]]),
-    repeat,
-    maybe_atom_gc(_,_),
-    (erase_fact(saved,info,[CUI,LUI,CLInfoLines0]) ->
-        process_cui_lui(InputStream,OutputStream,CUI,LUI,CLInfoLines0),
-        fail
-    ;   true
-    ),
-    !.
+process_input(InputStream, OutputStream) :-
+	erase_all_facts(saved,info),
+	fget_non_null_line(InputStream, Line0),
+	parse_line(Line0,CUI0,LUI0,SUI0,TS0,STT0,STR0,SAB0,TTY0,CODE0,SRL0),
+	lower(STR0,LCSTR0),
+	put_fact(saved,info,[CUI0,LUI0,[clinfo(Line0,CUI0,LUI0,SUI0,TS0,STT0,
+					       STR0,SAB0,TTY0,CODE0,SRL0,LCSTR0)]]),
+	repeat,
+	   maybe_atom_gc(_,_),
+	   ( erase_fact(saved,info,[CUI,LUI,CLInfoLines0]) ->
+	     process_cui_lui(InputStream,OutputStream,CUI,LUI,CLInfoLines0),
+	     fail
+	   ; true
+	   ),
+	   !.
 
 
-/* parse_line(+Line, -CUI, -LUI, -SUI, -N, -TS, -STT, -STR, -SAB, -TTY, -CODE,
-              -LRL, -SRL )
+/* parse_line(+Line, -CUI, -LUI, -SUI, -TS, -STT, -STR, -SAB, -TTY, -CODE, -SRL )
 
 parse_line/13 extracts CUI, ... from Line.  */
 
-parse_line(Line,CUI,LUI,SUI,N,TS,STT,STR,SAB,TTY,CODE,LRL,SRL) :-
-    parse_record(Line,"|",[CLS,N,TS,STT,STR,SAB,TTY,CODE,LRL,SRL]),
-    parse_record(CLS,":",[CUI,LUI,SUI]),
-    !.
-parse_line(Line,_,_,_,_,_,_,_,_,_,_,_,_) :-
-    format('~NFatal error: Bad input ~s~n',[Line]),
-    halt.
+% N and LRL?
+parse_line(Line, CUI, LUI, SUI, TS, STT, STR, SAB, TTY, CODE, SRL) :-
+	% parse_record(Line,"|",[N,LRL]),
+	parse_record(Line,"|",[CUI,_LAT,TS,LUI,STT,SUI,_ISPREF,_AUI,_SAUI,
+			       _SCUI,_SDUI,SAB,TTY,CODE,STR,SRL,_SUPPRESS,_CVF]),
+	!.
+parse_line(Line, _, _, _, _, _, _, _, _, _, _, _, _) :-
+	format('~NFatal error: Bad input ~s~n', [Line]),
+	halt.
 
 
 /* process_cui_lui(+InputStream, +OutputStream, +CUI, +LUI, +CLInfoLines)
@@ -257,16 +257,16 @@ The information from the current line is saved for further processing.  */
 process_cui_lui(InputStream,OutputStream,CUI0,LUI0,CLInfoLines0) :-
     repeat,
     (fget_non_null_line(InputStream,Line) ->
-        parse_line(Line,CUI,LUI,SUI,N,TS,STT,STR,SAB,TTY,CODE,LRL,SRL),
+        parse_line(Line,CUI,LUI,SUI,TS,STT,STR,SAB,TTY,CODE,SRL),
 %        LAT="ENG",   % limit to English   no need with mrconso.eng
 	lower(STR,LCSTR),
         (CUI==CUI0 ->
             process_cui_lui(InputStream,OutputStream,CUI0,LUI0,
-                            [clinfo(Line,CUI,LUI,SUI,N,TS,STT,STR,SAB,TTY,CODE,
-				    LRL,SRL,LCSTR)|CLInfoLines0])
+                            [clinfo(Line,CUI,LUI,SUI,TS,STT,STR,SAB,
+				    TTY,CODE,SRL,LCSTR)|CLInfoLines0])
         ;   write_filtered(CLInfoLines0,OutputStream),
-            put_fact(saved,info,[CUI,LUI,[clinfo(Line,CUI,LUI,SUI,N,TS,STT,STR,
-						 SAB,TTY,CODE,LRL,SRL,LCSTR)]])
+            put_fact(saved,info,[CUI,LUI,[clinfo(Line,CUI,LUI,SUI,TS,STT,STR,
+						 SAB,TTY,CODE,SRL,LCSTR)]])
         )
     ;   write_filtered(CLInfoLines0,OutputStream)
     ),
@@ -304,8 +304,8 @@ extract_lc_strings(CLInfoLines,LCStrings) :-
 
 extract_lc_strings_aux([],[]) :-
     !.
-extract_lc_strings_aux([clinfo(_Line,_CUI,_LUI,_SUI,_N,_TS,_STT,_STR,_SAB,_TTY,
-			       _CODE,_LRL,_SRL,LCSTR)|Rest],
+extract_lc_strings_aux([clinfo(_Line,_CUI,_LUI,_SUI,_TS,_STT,_STR,_SAB,_TTY,
+			       _CODE,_SRL,LCSTR)|Rest],
 		       [LCSTR|ExtractedRest]) :-
     extract_lc_strings_aux(Rest,ExtractedRest).
 extract_lc_strings_aux([First|_Rest],[]) :-
@@ -315,7 +315,7 @@ extract_lc_strings_aux([First|_Rest],[]) :-
 
 write_filtered([],_,_) :-
     !.
-write_filtered([clinfo(Line,CUI,LUI,SUI,N,TS,STT,STR,SAB,TTY,CODE,LRL,SRL,
+write_filtered([clinfo(Line,CUI,LUI,SUI,TS,STT,STR,SAB,TTY,CODE,SRL,
 		       LCSTR)|Rest],LCStrings,OutputStream) :-
     ((TS=="S",
       (control_option(filter_all_vocabularies) ->
@@ -326,8 +326,8 @@ write_filtered([clinfo(Line,CUI,LUI,SUI,N,TS,STT,STR,SAB,TTY,CODE,LRL,SRL,
         (control_option(dump_prefilter_cases) ->
 	     format(OutputStream,'~s|~s|~s|~s|~s~n',
 		    [MatchType,SAB,CUI,MatchingLCSTR,LCSTR])
-	;    format(OutputStream,'~s:~s:~s|~s|s|~s|~s|~s|~s|~s|~s|~s|~n',
-		    [CUI,LUI,SUI,N,STT,STR,SAB,TTY,CODE,LRL,SRL])
+	;    format(OutputStream,'~s:~s:~s|~s|s|~s|~s|~s|~s|~s|~n',
+		    [CUI,LUI,SUI,STT,STR,SAB,TTY,CODE,SRL])
 	)
     ;   (control_option(dump_prefilter_cases) ->
             true
@@ -392,8 +392,8 @@ write_suppressed_brand_names(CLInfoLines,LCStrings,OutputStream) :-
 
 write_suppressed_brand_names_aux([],_,_) :-
     !.
-write_suppressed_brand_names_aux([clinfo(Line,_CUI,_LUI,_SUI,_N,_TS,_STT,_STR,
-					 _SAB,_TTY,_CODE,_LRL,_SRL,LCSTR)|Rest],
+write_suppressed_brand_names_aux([clinfo(Line,_CUI,_LUI,_SUI,_TS,_STT,_STR,
+					 _SAB,_TTY,_CODE,_SRL,LCSTR)|Rest],
 				 LCFullBrandNames,OutputStream) :-
     (brand_name_matches(LCFullBrandNames,LCSTR) ->
         update_suppression_count('brand_name'),
@@ -450,6 +450,3 @@ write_suppression_counts :-
     fail.
 write_suppression_counts :-
     format('End.~n',[]).
-
-
-
