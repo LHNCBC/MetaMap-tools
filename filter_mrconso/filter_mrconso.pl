@@ -59,6 +59,10 @@
 	tag_text/2
     ]).
 
+:- use_module(metamap(metamap_parsing), [
+	generate_syntactic_analysis_plus/4
+    ]).
+
 :- use_module(metamap(metamap_tokenization), [
 	get_phrase_item_name/2,
 	get_phrase_item_feature/3
@@ -68,7 +72,6 @@
 	announce_lines/4,
 	compute_unique_filename/3,
 	fget_non_null_line/2,
-	generate_syntactic_analysis/3,
 	get_progress_bar_interval/1,
 	get_total_lines/1,
 	normalize_meta_string/3,
@@ -506,7 +509,7 @@ restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
 				      TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut,
 				      Reason),
 	  format(user_output,
-		 '~NRestored concept ~w|~w|~w|~w previously deleted because of ~w~n',
+		 '~NRestored concept "~w|~w|~w|~w" previously deleted because of ~w~n',
 		 [CUI,LUI,SUI,STR,Reason])
 	).
 
@@ -795,7 +798,7 @@ is_of_phrase([FirstItem,_NextItem|_]) :- % there must be something after 'of'
 parse_it(NMSTR, SyntacticAnalysis) :-
 	between(1, 5, _),
 	   tag_text(NMSTR, TagList),
-	   generate_syntactic_analysis(NMSTR, TagList, SyntacticAnalysis),
+	   generate_syntactic_analysis_plus(NMSTR, TagList, SyntacticAnalysis, _Definitions),
 	!.
 parse_it(NMSTR, minimal_syntax([[]])) :-
 	format('~NError: Cannot parse ~a after 5 attempts~n', [NMSTR]),

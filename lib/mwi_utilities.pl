@@ -8,7 +8,6 @@
 	announce_lines/4,
 	compute_unique_filename/3,
 	fget_non_null_line/2,
-	generate_syntactic_analysis/3,
 	get_progress_bar_interval/1,
 	get_total_lines/1,
 	normalize_meta_string/2,
@@ -19,12 +18,6 @@
 	remove_left_parentheticals/2,
 	strip_possessives/2
     ]).
-
-:- use_module(lexicon(lex_access),[
-	assemble_definitions/2,
-	tokenize_string_for_lexical_lookup/2
-    ]).
-
 
 :- use_module(metamap(metamap_tokenization),[
 	ends_with_s/1,
@@ -45,10 +38,6 @@
 	generate_variant_info/2
     ]).
 
-
-:- use_module(skr_lib(mincoman),[
-	minimal_commitment_analysis/5
-    ]).
 
 :- use_module(skr_lib(retokenize),[
 	remove_null_atom_defns/2,
@@ -189,28 +178,6 @@ normalize_meta_string(STR,NMSTR,NMTypes) :-
         halt
     ;   true
     ).
-
-generate_syntactic_analysis(ListOfAscii, TagList, SyntAnalysis) :-
-%    format('~ngsa/3: ~s~nTagList=~p~n',[ListOfAscii,TagList]),
-    once(tokenize_string_for_lexical_lookup(ListOfAscii,Words0)),
-    retokenize(Words0,Words),
-%    format('Words=~p~n',[Words]),
-    %%% ( control_option(longest_lexicon_match) ->
-    %%%   assemble_definitions(Words,Definitions0)
-    %%% ; assemble_definitions_shortest(Words,Definitions0)
-    %%% ),
-    % FML 11/30/2006 Thursday @ 12:29:14
-    % Hard-code longest lexical lookup
-    assemble_definitions(Words,Definitions0),
-    remove_null_atom_defns(Definitions0,Definitions),
-%    format('Definitions=~p~n',[Definitions]),
-    once(generate_variant_info(Definitions,VarInfoList)),
-%    format('VarInfoList=~p~n',[VarInfoList]),
-    consult_tagged_text(Definitions,VarInfoList,TagList,LabeledText,1),
-%    format('LabeledText=~p~n',[LabeledText]),
-    minimal_commitment_analysis(tag,Definitions,VarInfoList,
-                                LabeledText,SyntAnalysis).
-%    format('SyntAnalysis=~p~n',[SyntAnalysis]).
 
 normalized_syntactic_uninvert_string(String,NormSUninvString,NormTypes) :-
     normalize_string(String,NormString,NormTypes0),
