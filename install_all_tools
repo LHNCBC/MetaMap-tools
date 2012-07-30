@@ -7,6 +7,5 @@ for FILE in */*.sav
 do
     PROGRAM=`echo $FILE | cut -d'/' -f1`
     echo installing $PROGRAM
-    /bin/cp -p $PROGRAM/$PROGRAM $NLSTOOLS/$PROGRAM/$PROGRAM.BINARY.$ARCHITECTURE
-    /bin/cp -p $PROGRAM/$PROGRAM.sav $NLSTOOLS/$PROGRAM/
+    /bin/cp -p $PROGRAM/$PROGRAM.BINARY.Linux $PROGRAM/$PROGRAM.sav $NLSTOOLS/$PROGRAM
 done
