@@ -12,12 +12,12 @@ do
    # PROGRAM=`echo $DIR | sed -e 's@[./]@@g'`
    PROGRAM=$DIR
    echo '################################################################'
-   /bin/rm -f $PROGRAM $PROGRAM.sav $PROGRAM.BINARY.Linux
+   /bin/rm -f $PROGRAM $PROGRAM.sav $PROGRAM.BINARY.Linux $PROGRAM.RRF.sav $PROGRAM.RRF.BINARY.Linux
    echo running xref in directory $DIR
    echo '################################################################'
    echo y | SKRenv.12 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module; echo; echo UNDEF:; cat undef
    echo making in directory $DIR:
-   COMMAND="linkSICStus -P -O $PROGRAM.BINARY.Linux -T $PROGRAM.sav"
+   COMMAND="linkSICStus -P -O $PROGRAM.RRF.BINARY.Linux -T $PROGRAM.RRF.sav"
    echo $COMMAND
    echo '################################################################'
    $COMMAND
