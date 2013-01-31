@@ -34,9 +34,9 @@
 	maybe_atom_gc/2
     ]).
 
-:- use_module(skr_lib(generate_varinfo),[
-	generate_variant_info/2
-    ]).
+% :- use_module(skr_lib(generate_varinfo),[
+% 	generate_variant_info/2
+%     ]).
 
 
 :- use_module(skr_lib(retokenize),[
