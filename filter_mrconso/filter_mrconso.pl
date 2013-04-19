@@ -25,9 +25,9 @@
 %           is either "s" (suppressible synonym) or "p" (suppressible preferred name).
 %           Concepts with Term Status of "s" are filtered out regardless of whether
 %           the "s" was originally assigned by the Metathesaurus developers or the
-%           suppressing Java code.
+%           suppressing Java code, which now takes into account the RRF suppression.
 %           This filtering should be done for both the strict and relaxed models,
-%           and is invoked with the "S" flag.
+%           and is invoked with the "s" flag.
 %
 %           Strict filtering additionally involves filtering out terms by syntax:
 %           Concepts which parse into more than one MSU (minimal syntactic unit), i.e.,
@@ -59,6 +59,10 @@
 	tag_text/2
     ]).
 
+:- use_module(metamap(metamap_parsing), [
+	generate_syntactic_analysis_plus/4
+    ]).
+
 :- use_module(metamap(metamap_tokenization), [
 	get_phrase_item_name/2,
 	get_phrase_item_feature/3
@@ -68,7 +72,6 @@
 	announce_lines/4,
 	compute_unique_filename/3,
 	fget_non_null_line/2,
-	generate_syntactic_analysis/3,
 	get_progress_bar_interval/1,
 	get_total_lines/1,
 	normalize_meta_string/3,
@@ -386,16 +389,11 @@ filter_and_write(OutputStream,   CLInfoLines0,
 	% atom_codes(StrAtom0, STR0),
 	% atom_codes(CUIAtom0, CUI0),
 	% format(user_output, 'PREFERRED: ~w|~w~n', [CUIAtom0,StrAtom0]),
-	% First, do term-status filtering in the strict model only
+	% First, do term-status filtering
 	% ntss
-	( control_option(strict_filtering) ->
-	  filter_by_term_status(CLInfoLines0,  OutputStream,
-				TSCountsIn,    TSCountsNext,
-				TSExclusions0, CLInfoLines1)
-	; CLInfoLines1 = CLInfoLines0,
-	  TSCountsOut = TSCountsIn,
-	  TSExclusions0 = []
-	),
+	filter_by_term_status(CLInfoLines0,  OutputStream,
+			      TSCountsIn,    TSCountsNext,
+			      TSExclusions0, CLInfoLines1),
 	% then do lexical filtering
 	% (type filtering is done first to prevent the filtering out of a good
 	% lexical representative with a bad type)
@@ -506,7 +504,7 @@ restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
 				      TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut,
 				      Reason),
 	  format(user_output,
-		 '~NRestored concept ~w|~w|~w|~w previously deleted because of ~w~n',
+		 '~NRestored concept "~w|~w|~w|~w|" previously deleted because of ~w~n',
 		 [CUI,LUI,SUI,STR,Reason])
 	).
 
@@ -795,7 +793,7 @@ is_of_phrase([FirstItem,_NextItem|_]) :- % there must be something after 'of'
 parse_it(NMSTR, SyntacticAnalysis) :-
 	between(1, 5, _),
 	   tag_text(NMSTR, TagList),
-	   generate_syntactic_analysis(NMSTR, TagList, SyntacticAnalysis),
+	   generate_syntactic_analysis_plus(NMSTR, TagList, SyntacticAnalysis, _Definitions),
 	!.
 parse_it(NMSTR, minimal_syntax([[]])) :-
 	format('~NError: Cannot parse ~a after 5 attempts~n', [NMSTR]),

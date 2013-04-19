@@ -55,6 +55,10 @@
 	fget_line/2
     ]).
 
+:- use_module(skr_lib(sicstus_utils),[
+	ttyflush/0
+    ]).
+
 :- use_module(library(lists),[
 	append/2,
 	last/2
@@ -350,7 +354,8 @@ do_housekeeping(N, StartTime, NumLinesProcessed, Line) :-
 	  maybe_atom_gc(_,_),
 	  now(Now),
 	  TimeDiff is Now - StartTime,
-	  format(user_output, '~N~d...~d...~s~n', [NumLinesProcessed, TimeDiff, Line])
+	  format(user_output, '~N~d...~d...~s~n', [NumLinesProcessed, TimeDiff, Line]),
+	  ttyflush
 	; true
 	).
 
