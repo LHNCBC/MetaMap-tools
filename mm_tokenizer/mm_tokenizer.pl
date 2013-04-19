@@ -44,7 +44,6 @@
 
 :- use_module(skr_lib(nls_system), [
 	get_control_options_for_modules/2,
-	reset_control_options/1,
 	toggle_control_options/1,
 	set_control_values/2,
 	display_control_options_for_modules/2,
@@ -73,7 +72,6 @@ go(HaltOption) :-
 
 go(HaltOption,command_line(Options,Args)) :-
 	% use_module(library(printchars)),
-	reset_control_options(mm_tokenizer),
 	format('~nMetaMap Tokenizer~n~n', []),
 	( initialize_mm_tokenizer(Options, Args, InterpretedArgs) ->
 	    ( mm_tokenizer(InterpretedArgs) ->

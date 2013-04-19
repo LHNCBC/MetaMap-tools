@@ -78,17 +78,12 @@
 	parse_record/3
     ]).
 
-:- use_module(lexicon(qp_lexicon),[
-	use_multi_word_lexicon/0
-    ]).
-
 :- use_module(skr_lib(nls_strings), [
 	split_string_completely/3
     ]).
 
 :- use_module(skr_lib(nls_system), [
 	get_control_options_for_modules/2,				    
-	reset_control_options/1,
 	toggle_control_options/1,
 	set_control_values/2,
 	display_control_options_for_modules/2,
@@ -147,7 +142,6 @@ go(HaltOption) :-
 
 go(HaltOption, command_line(Options,Args)) :-
 	add_portray(portray_strings_double_quoted),
-	reset_control_options(filter_mrconso),
 	( initialize_filter_mrconso(Options,Args,InterpretedArgs) ->
 	       ( filter_mrconso(InterpretedArgs) ->
 	         true
@@ -182,7 +176,6 @@ initialize_filter_mrconso(Options, Args, InterpretedArgs) :-
 	toggle_control_options(IOptions),
 	set_control_values(IOptions, InterpretedArgs),
 	default_release(Release),
-	use_multi_word_lexicon,
 	display_current_control_options(filter_mrconso, Release),
 	initialize_filter_mrconso,
 	!.

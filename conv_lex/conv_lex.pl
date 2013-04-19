@@ -58,7 +58,6 @@
 	interpret_options/4,
 	parse_command_line/1,
 	pwd/1,
-	reset_control_options/1,
 	set_control_values/2,
 	toggle_control_options/1,
 	update_command_line/5
@@ -68,9 +67,16 @@
 	write_to_codes/2
     ]).
 
+:- use_module(library(lists), [
+	append/2
+    ]).
+
 :- use_module(library(lists3), [
 	substitute/4
     ]).
+
+
+usage :- format(user_output, 'conv_lex ASCIILexicon PrologFile~n', []).
 
 go :- go(halt).
 
@@ -79,7 +85,6 @@ go(HaltOption) :-
 	go(HaltOption, CLTerm).
 
 go(HaltOption, command_line(Options,Args)) :-
-	reset_control_options(conv_lex),
 	( initialize_conv_lex(Options, Args, InterpretedArgs) ->
 	    ( conv_lex(InterpretedArgs)
 	    ; true
@@ -104,7 +109,7 @@ initialize_conv_lex(Options, Args, IArgs) :-
 	\+ member(iopt(help,_), IOptions),
 	ArgSpecs = [aspec(infile,mandatory,file,read,
 			  no_default,
-			  'Input file containing labelled terms'),
+			  'Input file containing lexical entries'),
 		    aspec(outfile,mandatory,file,write,
 			  ['<infile>','.','out'],
 			  'Output file')
