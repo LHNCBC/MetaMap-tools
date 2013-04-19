@@ -41,18 +41,18 @@
     ]).
 
 :- use_module(skr_lib(nls_system), [
-	get_control_options_for_modules/2,
-	reset_control_options/1,
-	toggle_control_options/1,
-	set_control_values/2,
-	display_control_options_for_modules/2,
-	display_current_control_options/2,
 	control_option/1,
 	control_value/2,
-	parse_command_line/1,
-	interpret_options/4,
+	display_control_options_for_modules/2,
+	display_current_control_options/2,
+	get_control_options_for_modules/2,
+	get_from_iargs/4,
 	interpret_args/4,
-	get_from_iargs/4
+	interpret_options/4,
+	parse_command_line/1,
+	reset_control_options/1,
+	set_control_values/2,
+	toggle_control_options/1
     ]).
 
 :- use_module(skr_lib(nls_strings), [
@@ -79,6 +79,7 @@
     ]).
 
 :- use_module(skr(skr_utilities),[
+	get_all_candidate_features/3,
 	skr_write_phrase/1
     ]).
 
@@ -1635,9 +1636,10 @@ fread_term(Stream, Term) :-
 
 % Can this be replaced by metamap_evaluation:dump_evaluations?
 print_evaluations([], _).
-print_evaluations([ev(NegValue,CUI,MetaTerm,MetaConcept,_MetaWords,SemTypes0,
-                      _MatchMap,_InvolvesHead,_IsOvermatch,SourceInfo,_PosInfo,_Status)|Rest],
-                  OutputStream) :-
+print_evaluations([CandidateTerm|Rest], OutputStream) :-
+	get_all_candidate_features([negvalue,cui,metaterm,metaconcept,semtypes,sources],
+				   CandidateTerm,
+				   [NegValue,CUI,MetaTerm,MetaConcept,SemTypes0,SourceInfo]),
 	Value is -NegValue,
 	build_concept_name_1(MetaConcept, CUI, SourceInfo, ConceptName),
 	( control_option(show_cuis) ->

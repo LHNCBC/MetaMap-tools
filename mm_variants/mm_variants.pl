@@ -17,12 +17,12 @@
 :- use_module(lexicon(lex_access), [
 	initialize_lexicon/2,
 	% is_a_form/1,
-	get_categories_for_form/3
+	get_categories_for_form/2
     ]).
 
 :- use_module(metamap(metamap_variants), [
 	initialize_metamap_variants/1,
-	augment_GVCs_with_variants/2
+	augment_GVCs_with_variants/1
     ]).
 
 :- use_module(metamap(metamap_tokenization), [
@@ -39,10 +39,6 @@
 	maybe_atom_gc/2
     ]).
 
-:- use_module(skr_lib(server_choice), [
-	get_all_server_streams/3
-   ]).
-
 :- use_module(skr_lib(nls_system), [
 	control_option/1,
 	display_control_options_for_modules/2,
@@ -53,7 +49,6 @@
 	interpret_options/4,
 	parse_command_line/1,
 	pwd/1,
-	reset_control_options/1,
 	set_control_values/2,
 	toggle_control_options/1,
 	update_command_line/5
@@ -88,7 +83,6 @@ go(HaltOption) :-
     go(HaltOption,CLTerm).
 
 go(HaltOption,command_line(Options0, Args0)) :-
-	reset_control_options(mm_variants),
 	update_command_line(Options0, Args0, mm_variants, Options, Args),
 
 	( initialize_mm_variants(Options,Args,InterpretedArgs) ->
@@ -157,7 +151,6 @@ usage :-
 mm_variants/1 redirects I/O streams and then calls process_all/0.  */
 
 mm_variants(InterpretedArgs) :-
-	get_all_server_streams(LexiconServerStream, _TaggerServerStream, _WSDServerStream),
 	get_from_iargs(infile, name, InterpretedArgs, InputFile),
 	get_from_iargs(infile, stream, InterpretedArgs, InputStream),
 	get_from_iargs(outfile, name, InterpretedArgs, OutputFile),
@@ -169,7 +162,7 @@ mm_variants(InterpretedArgs) :-
 	current_output(SavedCurrentOutput),
 	set_output(OutputStream),
 	pwd(PWD),
-	process_all(0, PWD, LexiconServerStream, InputFile),
+	process_all(0, PWD, InputFile),
 	( control_option(end_of_processing) ->
 	  format(OutputStream,'<<< EOT >>>~n', [])
 	; true
@@ -188,15 +181,15 @@ process_all// reads labelled terms from user_input and writes variants
 onto user_output.  (user_input and user_output have been redirected to
 files.)  */
 
-process_all(NumLines, PWD, LexiconServerStream, InputFile) :-
+process_all(NumLines, PWD, InputFile) :-
 	% input_text(sentence, ListOfAscii),
 	read_line(ListOfAscii),
 	(  ListOfAscii == end_of_file ->
 	   true
 	;  NumLines1 is NumLines + 1,
 	   maybe_announce_progress(NumLines1, PWD, InputFile),
-	   process_text(ListOfAscii, LexiconServerStream), 
-	   process_all(NumLines1, PWD, LexiconServerStream, InputFile)
+	   process_text(ListOfAscii), 
+	   process_all(NumLines1, PWD, InputFile)
 	; true
 	).
 
@@ -212,7 +205,7 @@ maybe_announce_progress(NumLines, PWD, InputFile) :-
 
 process_text/1 finds and writes variants of the labelled term Text.  */
 
-process_text(Text, LexiconServerStream) :-
+process_text(Text) :-
 	Text \== "",
 	atom_codes(Term, Text),
 	current_output(CurrentOutput),
@@ -224,7 +217,7 @@ process_text(Text, LexiconServerStream) :-
 	    format('Atom GC performed collecting ~d bytes.~n', [SpaceCollected])
 	; true
 	),
-	compute_and_write_variants(Term, LexiconServerStream),
+	compute_and_write_variants(Term),
 	!.
 
 /* compute_and_write_variants(+Term)
@@ -242,13 +235,13 @@ passed on to augment_GVCs_with_variants/1.  */
 % 	% ; format(user_output,'WARNING: is_a_form/1 failed for ~p.~n', [Term])
 % 	).
 
-compute_and_write_variants(Term, LexiconServerStream) :-
+compute_and_write_variants(Term) :-
 	% If Term is not a lexical item, Categories will be instantiated to []
-	get_categories_for_form(Term, LexiconServerStream, Categories),
+	get_categories_for_form(Term, Categories),
 	split_categories(Categories, SplitCategories),
-	compute_and_write_variants_2(SplitCategories, Term, LexiconServerStream),
+	compute_and_write_variants_2(SplitCategories, Term),
 	!.
-compute_and_write_variants(Term, _LexiconServerStream) :-
+compute_and_write_variants(Term) :-
 	format(user_output, 'ERROR: compute_and_write_variants/1 failed for ~p.~n', [Term]),
 	abort.
 
@@ -260,8 +253,8 @@ split_categories_aux([], []).
 split_categories_aux([First|Rest], [[First]|SplitRest]) :-
 	split_categories_aux(Rest, SplitRest).
 
-compute_and_write_variants_2([], _Term, _LexiconServerStream).
-compute_and_write_variants_2([Categories|RestCategories], Term, LexiconServerStream) :-
+compute_and_write_variants_2([], _Term).
+compute_and_write_variants_2([Categories|RestCategories], Term) :-
 	maybe_atom_gc(DidGC, SpaceCollected),
 	( ( control_option(info),
 	    DidGC == yes
@@ -271,13 +264,13 @@ compute_and_write_variants_2([Categories|RestCategories], Term, LexiconServerStr
 	),
 	GVCs = [gvc(v(Term,Categories,0,"",_,_),_,_)],
         % format(user_output, 'Augmenting ~q~n', [GVCs]),
-	augment_GVCs_with_variants(GVCs, LexiconServerStream),
+	augment_GVCs_with_variants(GVCs),
 	GVCs = [gvc(_,Variants,_)],
 	simplify_categories(Categories, SimplifiedCats),
 	write_variants(Variants, Term, SimplifiedCats),
-	compute_and_write_variants_2(RestCategories, Term, LexiconServerStream),
+	compute_and_write_variants_2(RestCategories, Term),
 	!.
-compute_and_write_variants_2(Categories, Term, _LexiconServerStream) :-
+compute_and_write_variants_2(Categories, Term) :-
 	format(user_output, 'ERROR: compute_and_write_variants_2/2 failed for ~p  ~p~n',
 	       [Categories,Term]),
 	abort.

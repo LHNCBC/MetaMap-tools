@@ -90,7 +90,6 @@ where Radiology and radiology are suppressed. */
 
 :- use_module(skr_lib(nls_system), [
 	get_control_options_for_modules/2,
-	reset_control_options/1,
 	toggle_control_options/1,
 	set_control_values/2,
 	display_control_options_for_modules/2,
@@ -131,7 +130,6 @@ go(HaltOption) :-
 
 go(HaltOption,command_line(Options,Args)) :-
     add_portray(portray_strings_double_quoted),
-    reset_control_options(prefilter_mrconso),
     (initialize_prefilter_mrconso(Options,Args,InterpretedArgs) ->
         (prefilter_mrconso(InterpretedArgs); true)
     ;   usage

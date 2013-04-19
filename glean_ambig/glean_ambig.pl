@@ -47,7 +47,6 @@
 	interpret_args/4,
 	interpret_options/4,
 	parse_command_line/1,
-	reset_control_options/1,
 	set_control_values/2,
 	toggle_control_options/1
     ]).
@@ -76,7 +75,6 @@ go(HaltOption) :-
 
 go(HaltOption, command_line(Options,Args)) :-
 	add_portray(portray_strings_double_quoted),
-	reset_control_options(glean_ambig),
 	format('~nGlean Ambiguity~n',[]),
 	( initialize_glean_ambig(Options,Args,InterpretedArgs) ->
 	  glean_ambig(InterpretedArgs)

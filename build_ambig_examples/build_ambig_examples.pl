@@ -43,7 +43,6 @@
 
 :- use_module(skr_lib(nls_system), [
 	get_control_options_for_modules/2,
-	reset_control_options/1,
 	toggle_control_options/1,
 	set_control_values/2,
 	display_control_options_for_modules/2,
@@ -86,7 +85,6 @@ go(HaltOption) :-
 
 go(HaltOption,command_line(Options,Args)) :-
     add_portray(portray_strings_double_quoted),
-    reset_control_options(build_ambig_examples),
     format('~nBuild Ambiguity Examples~n',[]),
     (initialize_build_ambig_examples(Options,Args,InterpretedArgs) ->
         (build_ambig_examples(InterpretedArgs); true)
