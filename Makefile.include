@@ -14,7 +14,7 @@ include $(SKR)/src/Makefile.include
 
 # link runtime files for testing compilations
 
-SPRUNTIME=sp-4.2.0
+SPRUNTIME=sp-4.2.1
 SOFILES=c_nls_db.${SOEXT} db_access.${SOEXT} debug.${SOEXT} nls_signal.${SOEXT} \
 qp_lexicon.${SOEXT} qp_morph.${SOEXT} 
 
