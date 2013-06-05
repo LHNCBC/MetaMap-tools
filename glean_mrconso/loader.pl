@@ -1,9 +1,9 @@
 % File:     loader.pl
-% Module:   Glean Mrcon
+% Module:   Glean MrconSO
 % Author:   Lan
-% Purpose:  Loads glean_mrcon
+% Purpose:  Loads glean_mrconso
 
-:- use_module(glean_mrcon, [
+:- use_module(glean_mrconso, [
 	go/0
    ]).
 

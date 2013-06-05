@@ -73,7 +73,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2012AB),[
+:- use_module(skr_lib(semtype_translation_2013AA),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).
@@ -104,10 +104,7 @@
 :- use_module(skr_lib(print_chars)).
 
 :- use_module(skr_lib(sicstus_utils),[
-       	lower/2
-    ]).
-
-:- use_module(lexicon(lexical), [
+       	lower/2,
 	lowercase_list/2
     ]).
 

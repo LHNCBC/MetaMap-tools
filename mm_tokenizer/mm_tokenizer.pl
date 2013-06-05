@@ -10,10 +10,6 @@
 	go/2
     ]).
 
-:- use_module(lexicon(lexical),[
-	lowercase_list/2
-    ]).
-
 :- use_module(mm_tools_lib(mwi_utilities), [
 	compute_unique_filename/3
    ]).
@@ -53,6 +49,10 @@
 	interpret_options/4,
 	interpret_args/4,
 	get_from_iargs/4
+    ]).
+
+:- use_module(skr_lib(sicstus_utils),[
+	lowercase_list/2
     ]).
 
 /* go
