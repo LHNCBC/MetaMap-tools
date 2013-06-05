@@ -30,8 +30,8 @@ compile_flip_variants :
 compile_glean_ambig :
 	cd glean_ambig && $(MAKE) all
 
-compile_glean_mrcon :
-	cd glean_mrcon && $(MAKE) all
+compile_glean_mrconso :
+	cd glean_mrconso && $(MAKE) all
 
 compile_mm_print :
 	cd mm_print && $(MAKE) all
