@@ -47,8 +47,13 @@
 	add_portray/1
     ]).
 
+:- use_module(skr_lib(server_choice), [
+	get_server_streams/1
+   ]).
+
 :- use_module(skr_db(db_access),[
-	default_release/1
+	default_release/1,
+	initialize_db_access/0
     ]).
 
 :- use_module(lexicon(lex_access),[
@@ -56,7 +61,7 @@
     ]).
 
 :- use_module(tagger(tagger_access),[
-	tag_text/2
+	tag_text/5
     ]).
 
 :- use_module(metamap(metamap_parsing), [
@@ -184,7 +189,8 @@ initialize_filter_mrconso :-
 	(( control_option(strict_filtering)
 	 ; control_option(dump_syntax_only)
 	 ) ->
-	   initialize_lexicon(_,_)
+	   initialize_lexicon(_,_),
+	   initialize_db_access
 	 ; true
 	),
 	compile_mrrank_file,
@@ -228,8 +234,10 @@ filter_mrconso(InterpretedArgs) :-
 	get_from_iargs(outfile, stream, InterpretedArgs, OutputStream),
 	get_progress_bar_interval(Interval),
 	get_total_lines(TotalLines),
+	get_server_streams(TaggerServerStream-_WSDServerStream),
 	format('Processing ~a --> ~a.~n', [InputFile,OutputFile]),
-	process_input(InputStream, InputFile, OutputStream, Interval, TotalLines,
+	process_input(InputStream, InputFile, TaggerServerStream, OutputStream,
+		      Interval, TotalLines,
 		      NormCounts, TSCounts, SyntaxCounts),
 	write_normalization_counts(NormCounts, OutputStream),
 	write_term_status_counts(TSCounts, OutputStream),
@@ -240,6 +248,7 @@ filter_mrconso(InterpretedArgs) :-
 	),
 	close(OutputStream),
 	close(InputStream),
+	close(TaggerServerStream),
 	!.
 
 /* process_input(+InputStream, +OutputStream)
@@ -247,7 +256,8 @@ filter_mrconso(InterpretedArgs) :-
 process_input/2 reads lines from InputStream and writes filtered lines to
 OutputStream.  */
 
-process_input(InputStream, InputFile, OutputStream, Interval, TotalLines,
+process_input(InputStream, InputFile, TaggerServerStream, OutputStream,
+	      Interval, TotalLines,
 	      NormCounts, TSCounts, SyntaxCounts) :-
 	fget_non_null_line(InputStream, Line0),
 	parse_line(Line0, LineData, CUI0, LUI0, SUI0, TS0, STT0, TTY0, STR0, SAB0, CODE0),
@@ -261,7 +271,7 @@ process_input(InputStream, InputFile, OutputStream, Interval, TotalLines,
 	get_mrrank(SAB0, TTY0, Line0, MRRank),
 	Line = clinfo(NMSTR0,MRRank,CUI0,LUI0,SUI0,LineData,TS0,STT0,TTY0,STR0,SAB0,CODE0,NMTypes0),
 	NumLines is 1,
-	process_cui_lui(InputStream, InputFile, OutputStream,
+	process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			NumLines, Interval, TotalLines,
 			CUI0, LUI0, [Line],
 			[], NormCounts,
@@ -312,7 +322,7 @@ parse_line(Line, _, _, _, _, _, _, _, _, _) :-
    The information from the current line is saved for further processing.
 */
 
-process_cui_lui(InputStream, InputFile, OutputStream,
+process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 		NumLinesIn, Interval, TotalLines,
 		CUI0, LUI0, CLInfoLines0,
 		NormCountsIn, NormCountsOut,
@@ -335,17 +345,17 @@ process_cui_lui(InputStream, InputFile, OutputStream,
 	  NextLine = clinfo(NMSTR,MRRank,CUI,LUI,SUI,LineData,TS,STT,TTY,STR,SAB,CODE,NMTypes),
 	  % format(user_output, '~n~w~n', [NextLine]),
 	  ( CUI == CUI0 ->
-	    process_cui_lui(InputStream, InputFile, OutputStream,
+	    process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			    NumLinesNext, Interval, TotalLines,
 			    CUI0, LUI0, [NextLine|CLInfoLines0],
 			    NormCountsIn, NormCountsOut,
 			    TSCountsIn, TSCountsOut,
 			    SyntaxCountsIn, SyntaxCountsOut)
-	  ; filter_and_write(OutputStream, CLInfoLines0,
+	  ; filter_and_write(TaggerServerStream, OutputStream, CLInfoLines0,
 			     NormCountsIn, NormCountsNext,
 			     TSCountsIn, TSCountsNext,
 			     SyntaxCountsIn, SyntaxCountsNext),			     
-	    process_cui_lui(InputStream, InputFile, OutputStream,
+	    process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			    NumLinesNext, Interval, TotalLines,
 			    CUI, LUI, [NextLine],
 			    NormCountsNext, NormCountsOut,
@@ -353,7 +363,7 @@ process_cui_lui(InputStream, InputFile, OutputStream,
 			    SyntaxCountsNext, SyntaxCountsOut)
 	  )
 	  % If there are no more lines to read, simply write out what's been accumulated.
-	; filter_and_write(OutputStream, CLInfoLines0,
+	; filter_and_write(TaggerServerStream, OutputStream, CLInfoLines0,
 			   NormCountsIn, NormCountsOut,
 			   TSCountsIn, TSCountsOut,
 			   SyntaxCountsIn, SyntaxCountsOut)
@@ -372,7 +382,7 @@ according to several criteria:
 Every entry is written to OutputStream with an initial y or n
 indicating if it survived filtering. */
 
-filter_and_write(OutputStream,   CLInfoLines0,
+filter_and_write(TaggerServerStream, OutputStream,   CLInfoLines0,
 		 NormCountsIn,   NormCountsOut,
 		 TSCountsIn,     TSCountsOut,
 		 SyntaxCountsIn, SyntaxCountsOut) :-
@@ -400,7 +410,7 @@ filter_and_write(OutputStream,   CLInfoLines0,
 	  ) ->
 	  % finally do syntactic filtering
 	  % nsynt
-	  filter_syntactically(CLInfoLines3, OutputStream,
+	  filter_syntactically(CLInfoLines3, TaggerServerStream, OutputStream,
 			       SyntaxCountsIn, SyntaxCountsNext, SyntaxExclusions0, CLInfoLines4)
 	; CLInfoLines4 = CLInfoLines3,
 	  SyntaxCountsNext = SyntaxCountsIn,
@@ -709,16 +719,16 @@ update_syntax_count(synt, Increment,
 
 filter_syntactically/4.  See filter_and_write/1.  */
 
-filter_syntactically([], _, SyntaxCounts, SyntaxCounts, [], []).
+filter_syntactically([], _TaggerServerStream, _OutputStream, SyntaxCounts, SyntaxCounts, [], []).
 % The first recursive clause of filter_syntactically/4 handles complex phrases
 % that are excluded, and therefore added to the third argument.
-filter_syntactically([CLInfoLine|Rest], OutputStream,
+filter_syntactically([CLInfoLine|Rest], TaggerServerStream, OutputStream,
 		     SyntaxCountsIn, SyntaxCountsOut,
 		     [CLInfoLine|RestExcluded], FilteredRest) :-
 	CLInfoLine = clinfo(NMSTR,_MRRank,CUI,_LUI,_SUI,_LineData,
 			    _TS,_STT,_TTY,_STR,SAB,CODE,_NMTypes),
 	atom_codes(NMSTR, NMSTRString),
-	parse_it(NMSTRString, minimal_syntax(Phrases)),
+	parse_it(NMSTRString, TaggerServerStream, minimal_syntax(Phrases)),
 	length(Phrases, MSUCount), % number of minimal syntactic units (i.e., phrases)
 	( control_option(dump_syntax_only) ->
 	  simplify_all_phrases(Phrases, SUs0),
@@ -729,13 +739,13 @@ filter_syntactically([CLInfoLine|Rest], OutputStream,
 	  update_syntax_count(synt, 1, SyntaxCountsIn, SyntaxCountsNext)
 	),
 	!,
-	filter_syntactically(Rest, OutputStream,
+	filter_syntactically(Rest, TaggerServerStream, OutputStream,
 			     SyntaxCountsNext, SyntaxCountsOut, RestExcluded, FilteredRest).
 % The second recursive clause of filter_syntactically/4 handles simple phrases
 % that are not excluded, and therefore added to the fourth argument.
-filter_syntactically([First|Rest], OutputStream,
+filter_syntactically([First|Rest], TaggerServerStream, OutputStream,
 		     SyntaxCountsIn, SyntaxCountsOut, Excluded, [First|FilteredRest]) :-
-	filter_syntactically(Rest, OutputStream,
+	filter_syntactically(Rest, TaggerServerStream, OutputStream,
 			     SyntaxCountsIn, SyntaxCountsOut, Excluded, FilteredRest).
 
 generate_dump_syntax_only_output(SyntaxCount, MSUCount, CUI, CODE, SAB, OutputStream) :-
@@ -783,9 +793,9 @@ is_of_phrase([FirstItem,_NextItem|_]) :- % there must be something after 'of'
 	InputMatch == [of].
 
 % Try tagging and parsing five times, and quit if still unsuccessful.
-parse_it(NMSTR, SyntacticAnalysis) :-
+parse_it(NMSTR, TaggerServerStream, SyntacticAnalysis) :-
 	between(1, 5, _),
-	   tag_text(NMSTR, TagList),
+	   tag_text(NMSTR, TaggerServerStream, TagList, _, _),
 	   generate_syntactic_analysis_plus(NMSTR, TagList, SyntacticAnalysis, _Definitions),
 	!.
 parse_it(NMSTR, minimal_syntax([[]])) :-
