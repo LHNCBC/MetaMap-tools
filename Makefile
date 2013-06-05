@@ -11,8 +11,8 @@
 #
 #
 all : compile_build_ambig_examples compile_extract_mrconso_sources compile_filter_mrconso \
-compile_glean_mrcon compile_filter_mrconso compile_flip_variants compile_glean_ambig \
-compile_glean_mrcon compile_mm_print compile_mm_tokenizer compile_mm_variants compile_prefilter_mrconso
+compile_glean_mrconso compile_filter_mrconso compile_flip_variants compile_glean_ambig \
+compile_mm_print compile_mm_tokenizer compile_mm_variants compile_prefilter_mrconso
 
 
 compile_build_ambig_examples :
@@ -46,8 +46,8 @@ compile_prefilter_mrconso :
 	cd prefilter_mrconso && $(MAKE) all
 
 clean : clean_build_ambig_examples clean_extract_mrconso_sources clean_filter_mrconso \
-clean_glean_mrcon clean_filter_mrconso clean_flip_variants clean_glean_ambig \
-clean_glean_mrcon clean_mm_print clean_mm_tokenizer clean_mm_variants clean_prefilter_mrconso
+clean_glean_mrconso clean_filter_mrconso clean_flip_variants clean_glean_ambig \
+clean_mm_print clean_mm_tokenizer clean_mm_variants clean_prefilter_mrconso
 
 clean_build_ambig_examples :
 	cd build_ambig_examples && $(MAKE) clean
@@ -64,8 +64,8 @@ clean_flip_variants :
 clean_glean_ambig :
 	cd glean_ambig && $(MAKE) clean
 
-clean_glean_mrcon :
-	cd glean_mrcon && $(MAKE) clean
+clean_glean_mrconso :
+	cd glean_mrconso && $(MAKE) clean
 
 clean_mm_print :
 	cd mm_print && $(MAKE) clean
