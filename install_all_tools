@@ -6,7 +6,7 @@ TOOLS_DIR=$NLSTOOLS
 for FILE in */*.sav
 do
     PROGRAM=`echo $FILE | cut -d'/' -f1`
-    COMMAND="/bin/cp -p $PROGRAM/$PROGRAM.RRF.sav $PROGRAM/$PROGRAM.RRF.BINARY.Linux $NLSTOOLS/$PROGRAM"
+    COMMAND="/bin/cp -p $PROGRAM/$PROGRAM.sav $PROGRAM/$PROGRAM.BINARY.Linux $NLSTOOLS/$PROGRAM"
     echo $COMMAND
     $COMMAND
 done
