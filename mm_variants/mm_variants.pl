@@ -238,7 +238,8 @@ passed on to augment_GVCs_with_variants/1.  */
 compute_and_write_variants(Term) :-
 	% If Term is not a lexical item, Categories will be instantiated to []
 	get_categories_for_form(Term, Categories),
-	split_categories(Categories, SplitCategories),
+	sort(Categories, SortedCategories),
+	split_categories(SortedCategories, SplitCategories),
 	compute_and_write_variants_2(SplitCategories, Term),
 	!.
 compute_and_write_variants(Term) :-
@@ -262,7 +263,7 @@ compute_and_write_variants_2([Categories|RestCategories], Term) :-
 	    format('Atom GC performed collecting ~d bytes.~n', [SpaceCollected])
 	; true
 	),
-	GVCs = [gvc(v(Term,Categories,0,"",_,_),_,_)],
+	GVCs = [gvc(v(Term,0,Categories,"",_,_),_,_)],
         % format(user_output, 'Augmenting ~q~n', [GVCs]),
 	augment_GVCs_with_variants(GVCs),
 	GVCs = [gvc(_,Variants,_)],
@@ -281,7 +282,7 @@ compute_and_write_variants_2(Categories, Term) :-
 write_variants/2 writes Variants for Term on user_output (redirected).  */
 
 write_variants([], _Term, _SimplifiedTermCats).
-write_variants([v(Word,Categories,VarLevel,History,Roots,_NFR)|Rest],
+write_variants([v(Word,VarLevel,Categories,History,Roots,_NFR)|Rest],
 	       Term, SimplifiedTermCats) :-
 	% rev(History0,History),
 	simplify_categories(Categories, SimplifiedCats),

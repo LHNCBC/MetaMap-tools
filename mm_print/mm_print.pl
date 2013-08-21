@@ -11,7 +11,7 @@
    ]).
 
 :- use_module(metamap(metamap_utilities),[
-	build_concept_name_1/4,
+	build_concept_name_1/5,
 	dump_evaluations_indented/7
     ]).
 
@@ -1638,7 +1638,7 @@ print_evaluations([CandidateTerm|Rest], OutputStream) :-
 				   CandidateTerm,
 				   [NegValue,CUI,MetaTerm,MetaConcept,SemTypes0,SourceInfo]),
 	Value is -NegValue,
-	build_concept_name_1(MetaConcept, CUI, SourceInfo, ConceptName),
+	build_concept_name_1(MetaConcept, CUI, SourceInfo, _SourcesAtom, ConceptName),
 	( control_option(show_cuis) ->
 	  ( ( MetaTerm == MetaConcept; control_option(show_preferred_names_only)) ->
             format(OutputStream, '~t~d~6| ~p:~p', [Value,CUI,ConceptName])

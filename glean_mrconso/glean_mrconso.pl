@@ -4,7 +4,7 @@
 % Purpose:  Create the files words.gleaned, strings.gleaned and concepts.gleaned
 %           files which are used to create the DB files for the Meta Word Index facility.
 
-:- module(glean_mrcon,[
+:- module(glean_mrconso,[
 	go/0
     ]).
 
@@ -27,17 +27,18 @@
     ]).
 
 :- use_module(skr_lib(nls_system), [
-	get_control_options_for_modules/2,
-	toggle_control_options/1,
-	set_control_values/2,
-	display_control_options_for_modules/2,
-	display_current_control_options/2,
 	control_option/1,
 	control_value/2,
-	parse_command_line/1,
-	interpret_options/4,
+	display_control_options_for_modules/2,
+	display_current_control_options/2,
+	get_control_options_for_modules/2,
+	get_from_iargs/4,
 	interpret_args/4,
-	get_from_iargs/4
+	interpret_options/4,
+	parse_command_line/1,
+ 	reset_control_options/1,
+	set_control_values/2,
+	toggle_control_options/1
     ]).
 
 :- use_module(skr_lib(nls_strings),[
@@ -74,7 +75,7 @@
    go(+HaltFlag)
    go(+HaltFlag, +CommandLineTerm)
 
-go/0 is the executive predicate for glean_mrcon.
+go/0 is the executive predicate for glean_mrconso.
 go/0 uses go/1 with HaltFlag set to halt.
 go/1 parses the command line and calls go/2 which controls the processing.  */
 
@@ -86,10 +87,11 @@ go(HaltOption) :-
     go(HaltOption,CLTerm).
 
 go(HaltOption,command_line(Options,Args)) :-
+    reset_control_options(glean_mrconso),
     add_portray(portray_strings_double_quoted),
     format('~nGlean mrcon~n',[]),
-    (initialize_glean_mrcon(Options,Args,InterpretedArgs) ->
-        (glean_mrcon(InterpretedArgs); true)
+    (initialize_glean_mrconso(Options,Args,InterpretedArgs) ->
+        (glean_mrconso(InterpretedArgs); true)
     ;   usage
     ),
     (HaltOption==halt ->
@@ -98,16 +100,16 @@ go(HaltOption,command_line(Options,Args)) :-
     ).
 
 
-/* initialize_glean_mrcon(+Options, +Args, -InterpretedArgs)
+/* initialize_glean_mrconso(+Options, +Args, -InterpretedArgs)
 
-initialize_glean_mrcon/3 interprets command line options and arguments
+initialize_glean_mrconso/3 interprets command line options and arguments
 (opening files as necessary), and sets and displays the Glean Mrcon
 control options discovered.  It returns InterpretedArgs for later use
 (e.g., the stream associated with a file).  */
 
-initialize_glean_mrcon(Options, Args, InterpretedArgs) :-
-	get_control_options_for_modules([glean_mrcon], AllOptions),
-	interpret_options(Options, AllOptions, glean_mrcon, IOptions),
+initialize_glean_mrconso(Options, Args, InterpretedArgs) :-
+	get_control_options_for_modules([glean_mrconso], AllOptions),
+	interpret_options(Options, AllOptions, glean_mrconso, IOptions),
 	\+ member(iopt(help,_), IOptions),
 	ArgSpec=[aspec(infile,mandatory,file,read,no_default,
 		       'Input file similar to mrcon.filtered'),
@@ -125,16 +127,16 @@ initialize_glean_mrcon(Options, Args, InterpretedArgs) :-
 	toggle_control_options(IOptions),
 	set_control_values(IOptions, InterpretedArgs),
 	default_release(Release),
-	display_current_control_options(glean_mrcon, Release),
+	display_current_control_options(glean_mrconso, Release),
 	!.
 
 
 /* usage
 
-usage/0 displays glean_mrcon usage.  */
+usage/0 displays glean_mrconso usage.  */
 
 usage :-
-    format('~nUsage: glean_mrcon [<options>] <infile> <filterfile> <wordoutfile> <suioutfile> <cuioutfile>~n~n',[]),
+    format('~nUsage: glean_mrconso [<options>] <infile> <filterfile> <wordoutfile> <suioutfile> <cuioutfile>~n~n',[]),
     format('  <infile> should normally be mrcon.filtered,~n',[]),
     format('  <filterfile> contains <word1>|<word2> pairs corresponding to~n',[]),
     format('    the first and last words of strings whose words will be~n',[]),
@@ -143,16 +145,16 @@ usage :-
     format('  <wordoutfile> consists of I|N|CanonicalWord|SUI|CUI records,~n',[]),
     format('  <suioutfile> consists of SUI|String records,~n',[]),
     format('  and <cuioutfile> consists of CUI|Concept records.~n',[]),
-    display_control_options_for_modules(glean_mrcon,[]).
+    display_control_options_for_modules(glean_mrconso,[]).
 
 
 
 
-/* glean_mrcon(+InterpretedArgs)
+/* glean_mrconso(+InterpretedArgs)
 
-glean_mrcon/1 controls all glean_mrcon processing.  */
+glean_mrconso/1 controls all glean_mrconso processing.  */
 
-glean_mrcon(InterpretedArgs) :-
+glean_mrconso(InterpretedArgs) :-
 	get_from_iargs(infile,      name,   InterpretedArgs, InputFile),
 	get_from_iargs(infile,      stream, InterpretedArgs, InputStream),
 	get_from_iargs(filterfile,  name,   InterpretedArgs, FilterFile),
@@ -218,7 +220,7 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
 	  % SUIOutputStream writes to strings.gleaned
 	  % strings.gleaned has the same number of lines as mrcon.filtered.
 	  generate_string_output(GenerateStrings, SUIOutputStream, SUI, NormalizedString, String),
-          % first_term_is_concept is a default option for glean_mrcon
+          % first_term_is_concept is a default option for glean_mrconso
 
 	  handle_CUIs(FirstTermIsConcept, GenerateCUIs, CUIOutputStream,
 		      CUI0, CurrentCUI, TS, String, STT, CUI),
