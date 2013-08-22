@@ -4,25 +4,25 @@
 % Purpose:  Create the files words.gleaned, strings.gleaned and concepts.gleaned
 %           files which are used to create the DB files for the Meta Word Index facility.
 
-:- module(glean_mrconso,[
+:- module(glean_mrconso, [
 	go/0
     ]).
 
-:- use_module(mm_tools_lib(mwi_utilities),[
+:- use_module(mm_tools_lib(mwi_utilities), [
 	compute_unique_filename/3,
 	parse_record/2,
 	normalize_meta_string/3
     ]).
 
-:- use_module(metamap(metamap_tokenization),[
+:- use_module(metamap(metamap_tokenization), [
 	tokenize_text_mm/2
     ]).
 
-:- use_module(skr_db(db_access),[
+:- use_module(skr_db(db_access), [
 	default_release/1
     ]).
 
-:- use_module(skr_lib(addportray),[
+:- use_module(skr_lib(addportray), [
 	add_portray/1
     ]).
 
@@ -41,30 +41,34 @@
 	toggle_control_options/1
     ]).
 
-:- use_module(skr_lib(nls_strings),[
+:- use_module(skr_lib(nls_strings), [
 	atom_codes_list/2,
 	portray_strings_double_quoted/1,
 	split_string_completely/3
     ]).
 
-:- use_module(skr_lib(efficiency),[
+:- use_module(skr_lib(efficiency), [
 	maybe_atom_gc/2
     ]).
 
-:- use_module(skr_lib(nls_io),[
+:- use_module(skr_lib(nls_io), [
 	fget_line/2
     ]).
 
-:- use_module(skr_lib(sicstus_utils),[
+:- use_module(skr_lib(sicstus_utils), [
 	ttyflush/0
     ]).
 
-:- use_module(library(lists),[
+:- use_module(library(file_systems), [
+	file_exists/2
+    ]).
+
+:- use_module(library(lists), [
 	append/2,
 	last/2
     ]).
 
-:- use_module(library(system),[
+:- use_module(library(system), [
 	now/1
     ]).
 
@@ -89,7 +93,7 @@ go(HaltOption) :-
 go(HaltOption,command_line(Options,Args)) :-
     reset_control_options(glean_mrconso),
     add_portray(portray_strings_double_quoted),
-    format('~nGlean mrcon~n',[]),
+    format('~nGlean mrcon~n', []),
     (initialize_glean_mrconso(Options,Args,InterpretedArgs) ->
         (glean_mrconso(InterpretedArgs); true)
     ;   usage
@@ -136,16 +140,16 @@ initialize_glean_mrconso(Options, Args, InterpretedArgs) :-
 usage/0 displays glean_mrconso usage.  */
 
 usage :-
-    format('~nUsage: glean_mrconso [<options>] <infile> <filterfile> <wordoutfile> <suioutfile> <cuioutfile>~n~n',[]),
-    format('  <infile> should normally be mrcon.filtered,~n',[]),
-    format('  <filterfile> contains <word1>|<word2> pairs corresponding to~n',[]),
-    format('    the first and last words of strings whose words will be~n',[]),
-    format('    filtered out of <wordoutfile>. WARNING: It has no effect~n',[]),
-    format('    on the other output files.~n',[]),
-    format('  <wordoutfile> consists of I|N|CanonicalWord|SUI|CUI records,~n',[]),
-    format('  <suioutfile> consists of SUI|String records,~n',[]),
-    format('  and <cuioutfile> consists of CUI|Concept records.~n',[]),
-    display_control_options_for_modules(glean_mrconso,[]).
+    format('~nUsage: glean_mrconso [<options>] <infile> <filterfile> <wordoutfile> <suioutfile> <cuioutfile>~n~n', []),
+    format('  <infile> should normally be mrcon.filtered,~n', []),
+    format('  <filterfile> contains <word1>|<word2> pairs corresponding to~n', []),
+    format('    the first and last words of strings whose words will be~n', []),
+    format('    filtered out of <wordoutfile>. WARNING: It has no effect~n', []),
+    format('    on the other output files.~n', []),
+    format('  <wordoutfile> consists of I|N|CanonicalWord|SUI|CUI records,~n', []),
+    format('  <suioutfile> consists of SUI|String records,~n', []),
+    format('  and <cuioutfile> consists of CUI|Concept records.~n', []),
+    display_control_options_for_modules(glean_mrconso, []).
 
 
 
@@ -175,7 +179,7 @@ glean_mrconso(InterpretedArgs) :-
 	% FilterStream is closed in process_input/5
         % close(FilterStream),
 	close(InputStream),
-	format('Finished.~n~n',[]).
+	format('Finished.~n~n', []).
 
 
 /* process_input(+InputStream, +FilterStream,
@@ -191,7 +195,7 @@ process_input(InputStream, FilterStream,
 	read_filter_info(FilterStream, WordPairs),
 	close(FilterStream),
 	write_filter_info(WordPairs),
-	format(CUIOutputStream,'C.......|X~n',[]),  % dummy entry for optimization
+	format(CUIOutputStream,'C.......|X~n', []),  % dummy entry for optimization
 	% retractall(current_cui(_)),
 	get_processing_parameters(FirstTermIsConcept, GenerateCUIs, GenerateStrings, GenerateWords),
 	now(Now),
@@ -262,7 +266,7 @@ read_filter_info(FilterStream, WordPairs) :-
 	    WordPairs = [Word1Atom-Word2Atom|RestWordPairs],
 	    read_filter_info(FilterStream,  RestWordPairs)
             % assert(filter_info(Word1,Word2))
-          ; format('~NERROR: Illegal filter information: ~p~n',[Line]),
+          ; format('~NERROR: Illegal filter information: ~p~n', [Line]),
             halt
 	  )
 	; format('~NERROR: fget_line/2 failed.', []),
@@ -273,9 +277,12 @@ filter_file('filter_pairs.pl').
 
 write_filter_info(WordPairs) :-
 	filter_file(FilterFile),
-	open(FilterFile, write, FilterStream),
-	write_all_pairs(WordPairs, FilterStream),
-	close(FilterStream),
+	( file_exists(FilterFile, read) ->
+	  true
+	; open(FilterFile, write, FilterStream),
+	  write_all_pairs(WordPairs, FilterStream),
+	  close(FilterStream)
+	),
 	format(user_output, 'Compiling file ~w~n', [FilterFile]),
 	maybe_abolish_filter_pair(WordPairs),
 	compile(FilterFile).	
@@ -396,7 +403,7 @@ map_one_zero_to_yes_no(0, ' NO').
 
 generate_CUI(GenerateCUI, CUIOutputStream, CUI0, String) :-
 	( GenerateCUI =:= 1 ->
-	  format(CUIOutputStream,'~s|~s~n',[CUI0,String])
+	  format(CUIOutputStream,'~s|~s~n', [CUI0,String])
 	; true
 	).
 
@@ -433,7 +440,7 @@ handle_CUIs(0, GenerateCUIs, CUIOutputStream, CUI0,
 % strings.gleaned has the same number of lines as mrcon.filtered.
 generate_string_output(GenerateStrings, SUIOutputStream, SUI, NormalizedString, String) :-
 	( GenerateStrings is 1 ->
-	  format(SUIOutputStream,'~s|~s|~s~n',[SUI,NormalizedString,String])
+	  format(SUIOutputStream,'~s|~s|~s~n', [SUI,NormalizedString,String])
 	; true
 	).
 
