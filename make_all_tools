@@ -2,7 +2,14 @@
 
 ARCHITECTURE=`uname`
 
-cd $HOME/specialist/SKR/tools
+if [ $# -gt 0 ]
+then
+   COMPILE_DIR=$1
+else
+   COMPILE_DIR=$HOME/specialist/SKR/tools
+fi
+
+cd $COMPILE_DIR
 
 MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sed -e 's/[./]//g' | sort`
 
@@ -17,7 +24,7 @@ do
    echo '################################################################'
    echo y | SKRenv.12 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module; echo; echo UNDEF:; cat undef
    echo making in directory $DIR:
-   COMMAND="linkSICStus -P -O $PROGRAM.BINARY.Linux -T $PROGRAM.sav"
+   COMMAND="linkSICStus -w $COMPILE_DIR -P -O $PROGRAM.BINARY.Linux -T $PROGRAM.sav"
    echo $COMMAND
    echo '################################################################'
    $COMMAND
