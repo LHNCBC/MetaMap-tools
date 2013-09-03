@@ -4,27 +4,27 @@ ARCHITECTURE=`uname`
 
 if [ $# -gt 0 ]
 then
-   COMPILE_DIR=$1
+   TOOLS_DIR=$1
 else
-   COMPILE_DIR=$HOME/specialist/SKR/tools
+   TOOLS_DIR=$HOME/specialist/SKR/tools
 fi
 
-cd $COMPILE_DIR
+cd $TOOLS_DIR
 
 MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sed -e 's/[./]//g' | sort`
 
-for DIR in $MAKE_DIRS
+for APP_DIR in $MAKE_DIRS
 do
-   cd $DIR
-   # PROGRAM=`echo $DIR | sed -e 's@[./]@@g'`
-   PROGRAM=$DIR
+   cd $APP_DIR
+   # PROGRAM=`echo $APP_DIR | sed -e 's@[./]@@g'`
+   PROGRAM=$APP_DIR
    echo '################################################################'
    /bin/rm -f $PROGRAM $PROGRAM.sav $PROGRAM.BINARY.Linux $PROGRAM.sav $PROGRAM.BINARY.Linux
-   echo running xref in directory $DIR
+   echo running xref in directory $APP_DIR
    echo '################################################################'
    echo y | SKRenv.12 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module; echo; echo UNDEF:; cat undef
-   echo making in directory $DIR:
-   COMMAND="linkSICStus -w $COMPILE_DIR -P -O $PROGRAM.BINARY.Linux -T $PROGRAM.sav"
+   echo making in directory $TOOLS_DIR/$APP_DIR:
+   COMMAND="linkSICStus -PC -O $PROGRAM.BINARY.Linux -T $PROGRAM.sav"
    echo $COMMAND
    echo '################################################################'
    $COMMAND
