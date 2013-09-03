@@ -84,7 +84,7 @@
     ]).
 
 :- use_module(skr(skr_xml),[
-	generate_and_print_xml/1,
+	generate_and_print_xml/2,
 	conditionally_print_xml_footer/3,
 	conditionally_print_xml_header/2,
 	xml_output_format/1,
@@ -216,7 +216,7 @@ process_one_document(InputStream, OutputStream, PrevTerm, NextTerm) :-
 	AllMMO = [ArgsTerm,MMOAAsTerm,MMONegExTerm|OriginalUtteranceMMO],
         current_output(CurrentOutputStream),
         set_output(OutputStream),
-	generate_and_print_xml(AllMMO),
+	generate_and_print_xml(AllMMO, OutputStream),
         set_output(CurrentOutputStream).
 
 % If we're at EOF, then quit; otherwise process a document, and recurse.
