@@ -73,7 +73,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2013AA),[
+:- use_module(skr_lib(semtype_translation_2013AB),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).

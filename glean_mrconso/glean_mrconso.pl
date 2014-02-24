@@ -93,7 +93,7 @@ go(HaltOption) :-
 go(HaltOption,command_line(Options,Args)) :-
     reset_control_options(glean_mrconso),
     add_portray(portray_strings_double_quoted),
-    format('~nGlean mrcon~n', []),
+    format('~ngglean_mrconso~n', []),
     (initialize_glean_mrconso(Options,Args,InterpretedArgs) ->
         (glean_mrconso(InterpretedArgs); true)
     ;   usage
@@ -276,16 +276,16 @@ read_filter_info(FilterStream, WordPairs) :-
 filter_file('filter_pairs.pl').
 
 write_filter_info(WordPairs) :-
-	filter_file(FilterFile),
-	( file_exists(FilterFile, read) ->
-	  true
-	; open(FilterFile, write, FilterStream),
-	  write_all_pairs(WordPairs, FilterStream),
-	  close(FilterStream)
-	),
-	format(user_output, 'Compiling file ~w~n', [FilterFile]),
-	maybe_abolish_filter_pair(WordPairs),
-	compile(FilterFile).	
+        filter_file(FilterFile),
+        ( file_exists(FilterFile, read) ->
+          true
+        ; open(FilterFile, write, FilterStream),
+          write_all_pairs(WordPairs, FilterStream),
+          close(FilterStream)
+        ),
+        format(user_output, 'Compiling file ~w~n', [FilterFile]),
+        maybe_abolish_filter_pair(WordPairs),
+        compile(FilterFile).    
 
 % This is ugly, but it works.
 % The predicate filter_pair/2 is a static predicate defined via a stub
