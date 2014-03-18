@@ -228,7 +228,7 @@ parse_line(Line, CUI, LUI, SUI, TS, STT, STR, SAB, TTY, CODE, SRL) :-
 	parse_record(Line,"|",[CUI,_LAT,TS,LUI,STT,SUI,_ISPREF,_AUI,_SAUI,
 			       _SCUI,_SDUI,SAB,TTY,CODE,STR,SRL,_SUPPRESS,_CVF]),
 	!.
-parse_line(Line, _, _, _, _, _, _, _, _, _, _, _, _) :-
+parse_line(Line, _, _, _, _, _, _, _, _, _, _) :-
 	format('~NFatal error: Bad input ~s~n', [Line]),
 	halt.
 
@@ -289,10 +289,11 @@ already be synonyms, not preferred forms. */
 write_filtered(CLInfoLines0,OutputStream) :-
     rev(CLInfoLines0,CLInfoLines),
     extract_lc_strings(CLInfoLines,LCStrings),
-    (control_option(brand_name_suppression) ->
-        write_suppressed_brand_names(CLInfoLines,LCStrings,OutputStream)
-    ;   write_filtered(CLInfoLines,LCStrings,OutputStream)
-    ),
+    % redundant now because brand_name_suppression is the only way this program is ever used
+    % (control_option(brand_name_suppression) ->
+    write_suppressed_brand_names(CLInfoLines,LCStrings,OutputStream),
+    % ;   write_filtered(CLInfoLines,LCStrings,OutputStream)
+    % ),
     !.
 
 extract_lc_strings(CLInfoLines,LCStrings) :-
@@ -311,56 +312,58 @@ extract_lc_strings_aux([First|_Rest],[]) :-
     !,
     halt.
 
-write_filtered([],_,_) :-
-    !.
-write_filtered([clinfo(Line,CUI,LUI,SUI,TS,STT,STR,SAB,TTY,CODE,SRL,
-		       LCSTR)|Rest],LCStrings,OutputStream) :-
-    ((TS=="S",
-      (control_option(filter_all_vocabularies) ->
-          true
-      ;   filterable_vocabulary(SAB)
-      ),
-      substring_match(LCSTR,LCStrings,MatchType,MatchingLCSTR)) ->
-        (control_option(dump_prefilter_cases) ->
-	     format(OutputStream,'~s|~s|~s|~s|~s~n',
-		    [MatchType,SAB,CUI,MatchingLCSTR,LCSTR])
-	;    format(OutputStream,'~s:~s:~s|~s|s|~s|~s|~s|~s|~s|~n',
-		    [CUI,LUI,SUI,STT,STR,SAB,TTY,CODE,SRL])
-	)
-    ;   (control_option(dump_prefilter_cases) ->
-            true
-	;   format(OutputStream,'~s~n',[Line])
-	)
-    ),
-    write_filtered(Rest,LCStrings,OutputStream).
-
-substring_match(LCSTR,LCStrings,"prefix-hyphen",MatchingLCSTR) :-
-    left_substring_match(LCStrings,LCSTR," - ",MatchingLCSTR),
-    !.
-substring_match(LCSTR,LCStrings,"prefix-colon",MatchingLCSTR) :-
-    left_substring_match(LCStrings,LCSTR,": ",MatchingLCSTR),
-    !.
-substring_match(LCSTR,LCStrings,"hyphen-suffix",MatchingLCSTR) :-
-    right_substring_match(LCStrings,LCSTR," - ",MatchingLCSTR),
-    !.
-
-left_substring_match([],_,_,_) :-
-    !,
-    fail.
-left_substring_match([First|_Rest],LCSTR,Separator,First) :-
-    append([LCSTR,Separator,_],First),
-    !.
-left_substring_match([_First|Rest],LCSTR,Separator,MatchingLCSTR) :-
-    left_substring_match(Rest,LCSTR,Separator,MatchingLCSTR).
-
-right_substring_match([],_,_,_) :-
-    !,
-    fail.
-right_substring_match([First|_Rest],LCSTR,Separator,First) :-
-    append([_,Separator,LCSTR],First),
-    !.
-right_substring_match([_First|Rest],LCSTR,Separator,MatchingLCSTR) :-
-    right_substring_match(Rest,LCSTR,Separator,MatchingLCSTR).
+% This code is used only if brand_name_suppression is not called,
+% so it is obsolete.
+% write_filtered([],_,_) :-
+%     !.
+% write_filtered([clinfo(Line,CUI,LUI,SUI,TS,STT,STR,SAB,TTY,CODE,SRL,
+% 		       LCSTR)|Rest],LCStrings,OutputStream) :-
+%     ((TS=="S",
+%       (control_option(filter_all_vocabularies) ->
+%           true
+%       ;   filterable_vocabulary(SAB)
+%       ),
+%       substring_match(LCSTR,LCStrings,MatchType,MatchingLCSTR)) ->
+%         (control_option(dump_prefilter_cases) ->
+% 	     format(OutputStream,'~s|~s|~s|~s|~s~n',
+% 		    [MatchType,SAB,CUI,MatchingLCSTR,LCSTR])
+% 	;    format(OutputStream,'~s:~s:~s|~s|s|~s|~s|~s|~s|~s|~n',
+% 		    [CUI,LUI,SUI,STT,STR,SAB,TTY,CODE,SRL])
+% 	)
+%     ;   (control_option(dump_prefilter_cases) ->
+%             true
+% 	;   format(OutputStream,'~s~n',[Line])
+% 	)
+%     ),
+%     write_filtered(Rest,LCStrings,OutputStream).
+% 
+% substring_match(LCSTR,LCStrings,"prefix-hyphen",MatchingLCSTR) :-
+%     left_substring_match(LCStrings,LCSTR," - ",MatchingLCSTR),
+%     !.
+% substring_match(LCSTR,LCStrings,"prefix-colon",MatchingLCSTR) :-
+%     left_substring_match(LCStrings,LCSTR,": ",MatchingLCSTR),
+%     !.
+% substring_match(LCSTR,LCStrings,"hyphen-suffix",MatchingLCSTR) :-
+%     right_substring_match(LCStrings,LCSTR," - ",MatchingLCSTR),
+%     !.
+% 
+% left_substring_match([],_,_,_) :-
+%     !,
+%     fail.
+% left_substring_match([First|_Rest],LCSTR,Separator,First) :-
+%     append([LCSTR,Separator,_],First),
+%     !.
+% left_substring_match([_First|Rest],LCSTR,Separator,MatchingLCSTR) :-
+%     left_substring_match(Rest,LCSTR,Separator,MatchingLCSTR).
+% 
+% right_substring_match([],_,_,_) :-
+%     !,
+%     fail.
+% right_substring_match([First|_Rest],LCSTR,Separator,First) :-
+%     append([_,Separator,LCSTR],First),
+%     !.
+% right_substring_match([_First|Rest],LCSTR,Separator,MatchingLCSTR) :-
+%     right_substring_match(Rest,LCSTR,Separator,MatchingLCSTR).
 
 
 /* filterable_vocabulary(?Vocabulary)
@@ -369,7 +372,7 @@ filterable_vocabulary/1 is a factual predicate that is updated each year
 to specify those vocabularies that can be filtered by substring matching. */
 
 % 2006 filterable vocabularies
-filterable_vocabulary("dummy").
+% filterable_vocabulary("dummy").
 
 
 /* write_suppressed_brand_names(+CLInfoLines, +LCStrings, +OutputStream)
