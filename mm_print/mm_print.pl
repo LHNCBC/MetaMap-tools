@@ -7,6 +7,7 @@
 	go/0,
 	go/1,
 	go/2,
+	gt/0,
 	stop_mm_print/0
    ]).
 
@@ -112,6 +113,10 @@
 	aggregate/3
     ]).
 
+:- use_module(library(codesio),[
+	read_from_codes/2
+    ]).
+
 :- use_module(library(file_systems),[
 	close_all_streams/0
     ]).
@@ -145,6 +150,10 @@ go(HaltOption,command_line(Options,Args)) :-
         halt
     ;   true
     ).
+
+gt :-
+    go(true).
+
 
 initialize_mm_print(Options,Args,IArgs) :-
     retractall(stop_phrase(_)),
@@ -211,6 +220,9 @@ process_one_document(InputStream, OutputStream, PrevTerm, NextTerm) :-
 	get_header_terms(InputStream, PrevTerm, ArgsTerm, MMOAAsTerm, MMONegExTerm),
 	MMONegExTerm = neg_list(MMONegations),
 	generate_negex_output(MMONegations),
+	% Utterances are read in by line, and not by terms,
+	% so we must consume the next newline char.
+	get_code(InputStream, 10),
 	get_all_utterances(InputStream, OutputStream, Utterances, NextTerm),
 	convert_all_utterances_to_orig_MMO(Utterances, OriginalUtteranceMMO, []),
 	AllMMO = [ArgsTerm,MMOAAsTerm,MMONegExTerm|OriginalUtteranceMMO],
@@ -306,18 +318,29 @@ get_header_terms(InputStream, PrevTerm, ArgsTerm, AAsTerm, NegExTerm) :-
 	get_negex_term(InputStream, NegExTerm).
 
 get_args_term(InputStream, ArgsTerm) :-
-	fread_term(InputStream, ArgsTerm),
-	( ArgsTerm = args(_,_) ->
-	  true
-	; format('~NERROR: get_args_term/3 expected an args/3 term; found~n~p~n', [ArgsTerm]),
-	  fail
-	).
+        fread_term(InputStream, ArgsTerm),
+        ( ArgsTerm = args(_,_) ->
+          true
+        ; format('~NERROR: get_args_term/3 expected an args/3 term; found~n~p~n', [ArgsTerm]),
+          fail
+        ).
 
 get_aas_term(InputStream, AAsTerm) :-
-	fread_term(InputStream, AAsTerm),
-	( AAsTerm = aas(_) ->
+	get_code(InputStream, ThisCode),
+	% I do not yet understand why this is happens,
+	% but in the first document, ThisCode is 10,
+	% yet in all subsequent documents, ThisCode is 97
+	% (the frst code of the aas term!).
+	( read_line(InputStream, Codes0),
+	  ( ThisCode == 10 ->
+	    Codes = Codes0
+	  ; Codes = [ThisCode|Codes0]
+	  ),
+	  replace_all_substrings(Codes, "\\", "\\\\", NewCodes),
+	  read_from_codes(NewCodes, AAsTerm),
+	  AAsTerm = aas(_) ->
 	  true
-	; format('~NERROR: get_aas_term/3 expected an aas/1 term; found~n~p~n', [AAsTerm]),
+	; format('~NERROR: get_aas_term/3 expected an aa/1 term; found~n~p~n', [AAsTerm]),
 	  fail
 	).
 
@@ -364,12 +387,16 @@ See MetaMap documentation for further information.
 get_phrases/2 is an auxiliary predicate.  */
 
 get_utterance(InputStream, TagLabel, Term) :-
-	( fread_term(InputStream, NextTerm) ->
+%	( fread_term(InputStream, NextTerm) ->
+	( read_line(InputStream, Codes),
+	  replace_all_substrings(Codes, "\\", "\\\\", NewCodes),
+	  read_from_codes(NewCodes, NextTerm),
 	  ( NextTerm = utterance(Label,String,PosInfo,ReplPos) ->
 	    get_phrases(InputStream, String, Phrases),
 	    verify_non_null_phrases(Phrases, Label),
 	    Label = TagLabel,
 	    Term = utterance(Label,String,Phrases,PosInfo,ReplPos)
+	    % I don't understand how these cases ever apply!
 	  ; NextTerm = args(_,_) ->
 	    Term = NextTerm
 	  ; NextTerm = 'EOT' ->
@@ -378,7 +405,8 @@ get_utterance(InputStream, TagLabel, Term) :-
 		   [NextTerm]),
 	    !,
 	    fail
-	  )
+	  ) ->
+        true
 	; complain_no_utterance_term(TagLabel)
 	).
 
