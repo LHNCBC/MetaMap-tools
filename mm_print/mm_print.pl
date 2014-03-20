@@ -421,18 +421,24 @@ get_phrase_term(InputStream, UtteranceText, PhraseTerm) :-
 	).
 
 get_candidates(InputStream, UtteranceText, CandidatesTerm) :-
-	( fread_term(InputStream, CandidatesTerm),
-	  CandidatesTerm = candidates(_TotalCandidateCount,
-				      _ExcludedCandidateCount,_PrunedCandidateCount,
-				      _RemainingCandidateCount,_CandidateList) ->
+	( fread_term(InputStream, CandidatesTerm0),
+	  CandidatesTerm0 = candidates(TotalCandidateCount,
+				       ExcludedCandidateCount,PrunedCandidateCount,
+				       RemainingCandidateCount,CandidateList0) ->
+	  add_neg_field_to_candidate_list(CandidateList0, CandidateList),
+	  CandidatesTerm = candidates(TotalCandidateCount,
+				       ExcludedCandidateCount,PrunedCandidateCount,
+				       RemainingCandidateCount,CandidateList) ->
+	  
 	  true
 	; format('~NERROR: (get_candidates_term/3) Missing candidates for "~p".~n', [UtteranceText]),
 	  fail
 	).
 
+
 get_mappings(InputStream, UtteranceText, mappings(Mappings)) :-
-	( fread_term(InputStream, mappings(Mappings)) ->
-	  true
+	( fread_term(InputStream, mappings(Mappings0)) ->
+	  add_neg_field_to_mapping_list(Mappings0, Mappings)
 	; format('~NERROR: (get_mappings_term/3) Missing mappings for "~p".~n', [UtteranceText]),
 	  fail
 	).
@@ -852,6 +858,30 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
 % go on in case of failure
 print_phrases([_|Rest],String,Label,OutputStream) :-
     print_phrases(Rest,String,Label,OutputStream).
+
+
+add_neg_field_to_mapping_list([], []).
+add_neg_field_to_mapping_list([H|T], [HWithNeg|TWithNeg]) :-
+	add_neg_field_to_one_mapping(H, HWithNeg),
+	add_neg_field_to_mapping_list(T, TWithNeg).
+
+add_neg_field_to_one_mapping(Mapping, MappingWithNeg) :-
+	Mapping = map(Score,CandidateList0),
+	add_neg_field_to_candidate_list(CandidateList0, CandidateList),
+	MappingWithNeg = map(Score,CandidateList).
+
+add_neg_field_to_candidate_list([], []).
+add_neg_field_to_candidate_list([H|T], [HWithNeg|TWithNeg]) :-
+	add_neg_field_to_one_candidate(H, HWithNeg),
+	add_neg_field_to_candidate_list(T, TWithNeg).
+
+
+add_neg_field_to_one_candidate(ev(NegValue,CUI,MetaTerm,PreferredName,MetaWords,SemTypes,
+				  MatchMap,InvolvesHead,IsOvermatch,UniqueSources,PosInfo,Status),
+			       ev(NegValue,CUI,MetaTerm,PreferredName,MetaWords,SemTypes,
+				  MatchMap,InvolvesHead,IsOvermatch,UniqueSources,PosInfo,Status,0)) :- !.
+add_neg_field_to_one_candidate(Term, Term).
+
 
 truncate_list(List,TruncatedList,MaxN,NTruncated) :-
     length(List,N),
