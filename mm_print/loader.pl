@@ -7,6 +7,7 @@
 	go/0,
 	go/1,
 	go/2,
+	gt/0,
 	stop_mm_print/0
     ]).
 
