@@ -7,8 +7,7 @@
 	go/0,
 	go/1,
 	go/2,
-	gt/0,
-	stop_mm_print/0
+	gt/0
     ]).
 
 :- use_module(skr_lib(sicstus_utils), [
@@ -20,5 +19,4 @@ runtime_entry(start) :-
 runtime_entry(abort) :-
 	format(user_output, '~nDisconnecting servers and closing files...', []),
 	ttyflush,
-	stop_mm_print,
 	format(user_output, 'Done.~n', []).
