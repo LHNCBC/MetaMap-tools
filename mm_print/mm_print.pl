@@ -74,7 +74,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2013AB),[
+:- use_module(skr_lib(semtype_translation_2014AA),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).
@@ -163,7 +163,8 @@ initialize_mm_print(Options,Args,IArgs) :-
     \+member(iopt(help,_),IOptions),
     ArgSpec=[aspec(infile,mandatory,file,read,no_default,
                            'Input file containing machine-readable MetaMap output'),
-             aspec(outfile,mandatory,file,write,user_output,
+             aspec(outfile,mandatory,file,write,
+		   or(['<infile>','.','out'],user_output),
                            'Output file')
             ],
     interpret_args(IOptions,ArgSpec,Args,IArgs),

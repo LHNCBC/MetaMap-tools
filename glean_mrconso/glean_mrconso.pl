@@ -179,7 +179,8 @@ glean_mrconso(InterpretedArgs) :-
 	% FilterStream is closed in process_input/5
         % close(FilterStream),
 	close(InputStream),
-	format('Finished.~n~n', []).
+	format('FINISHED processing ~a and ~a --> ~a, ~a, and ~a.~n',
+	       [InputFile,FilterFile,WordOutputFile,SUIOutputFile,CUIOutputFile]).
 
 
 /* process_input(+InputStream, +FilterStream,
