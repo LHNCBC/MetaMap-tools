@@ -260,21 +260,19 @@ process_input(InputStream, InputFile, TaggerServerStream, OutputStream,
 	      Interval, TotalLines,
 	      NormCounts, TSCounts, SyntaxCounts) :-
 	fget_non_null_line(InputStream, Line0),
-	parse_line(Line0, LineData, CUI0, LUI0, SUI0, TS0, STT0, TTY0, STR0, SAB0, CODE0),
-	atom_codes(STR0, STR0String),
-	normalize_meta_string(STR0String, NMSTRString, NMTypes0),
+	parse_line(Line0, CUI0, LineTerm),
+	% atom_codes(STR0, STR0String),
+	% normalize_meta_string(STR0String, NMSTRString, NMTypes0),
 	% format(user_output,
 	%        'NORM|~w|~w|~w|~s|~s|~w~n',
 	%        [CUI0,LUI0,SUI0,STR0String, NMSTRString, NMTypes0]),
-	atom_codes(NMSTR0, NMSTRString),
+	% atom_codes(NMSTR0, NMSTRString),
 	% Include the MRRANK score in the clinfo/13 term
-	get_mrrank(SAB0, TTY0, Line0, MRRank),
-	Line = clinfo(NMSTR0,MRRank,CUI0,LUI0,SUI0,LineData,TS0,STT0,TTY0,STR0,SAB0,CODE0,NMTypes0),
+	% get_mrrank(SAB0, TTY0, Line0, MRRank),
 	NumLines is 1,
 	process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			NumLines, Interval, TotalLines,
-			CUI0, LUI0, [Line],
-			[], NormCounts,
+			CUI0, [LineTerm], [], NormCounts,
 			[p-0,s-0], TSCounts,
 			[pref-0,synt-0], SyntaxCounts).
 
@@ -282,8 +280,7 @@ process_input(InputStream, InputFile, TaggerServerStream, OutputStream,
 
 parse_line/9 extracts CUI, ... from Line.  */
 
-parse_line(LineString, LineAtom, CUIAtom, LUIAtom, SUIAtom, TSAtom,
-	   STTAtom, TTYAtom, STRAtom, SABAtom, CODEAtom) :-
+parse_line(LineString, CUIAtom, LineTerm) :-
 	% parse_record(LineString, "|",
 	%	     [CLSString,_N,TSString,STTString,STRString,SABString,TTYString,CODEString]),
 	parse_record(LineString, "|",
@@ -291,12 +288,18 @@ parse_line(LineString, LineAtom, CUIAtom, LUIAtom, SUIAtom, TSAtom,
 		      SUIString,_ISPREFString,_AUIString,_SAUIString,
 		      _SCUIString,_SDUIString,SABString,TTYString,CODEString,
 		      STRString,_SRLString,_SUPPRESSString,_CVFString]),
-	atom_codes_list([LineAtom,TSAtom,STTAtom,STRAtom,SABAtom,TTYAtom,CODEAtom],
-			[LineString,TSString,STTString,STRString,SABString,TTYString,CODEString]),
+	atom_codes_list([LineAtom,TSAtom,STTAtom,SABAtom,TTYAtom,CODEAtom],
+			[LineString,TSString,STTString,SABString,TTYString,CODEString]),
 	atom_codes_list([CUIAtom,LUIAtom,SUIAtom],[CUIString,LUIString,SUIString]),
+	normalize_meta_string(STRString, NormSTRString, NMTypes),
+	atom_codes(STRAtom, STRString),
+	atom_codes(NormSTRAtom, NormSTRString),
+	get_mrrank(SABAtom, TTYAtom, LineString, MRRank),
+	LineTerm = clinfo(NormSTRAtom,MRRank,CUIAtom,LUIAtom,SUIAtom,LineAtom,
+			  TSAtom,STTAtom,TTYAtom,STRAtom,SABAtom,CODEAtom,NMTypes),
 	!.
-parse_line(Line, _, _, _, _, _, _, _, _, _) :-
-	format('~NFatal error: Bad input ~s~n', [Line]),
+parse_line(LineString, _CUIAtom, _LineTerm) :-
+	format('~NFatal error: Bad input ~s~n', [LineString]),
 	stop_filter_mrconso,
 	halt.
 
@@ -324,7 +327,7 @@ parse_line(Line, _, _, _, _, _, _, _, _, _) :-
 
 process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 		NumLinesIn, Interval, TotalLines,
-		CUI0, LUI0, CLInfoLines0,
+		CUI0, CLInfoLines0,
 		NormCountsIn, NormCountsOut,
 		TSCountsIn, TSCountsOut,
 		SyntaxCountsIn, SyntaxCountsOut) :-
@@ -332,22 +335,21 @@ process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 	  NumLinesNext is NumLinesIn + 1,
 	  % format(user_output, '~d:~a~n', [NumLinesNext,Line]),
 	  announce_lines(NumLinesNext, Interval, TotalLines, InputFile),
-	  parse_line(Line, LineData, CUI, LUI, SUI, TS, STT, TTY, STR, SAB, CODE),
+	  parse_line(Line, CUI, NextLineTerm),
 	  % LAT="ENG",   % limit to English; no need with mrconso.eng
-	  atom_codes(STR, STRString),
-	  normalize_meta_string(STRString, NMSTRString, NMTypes),
+	  % atom_codes(STR, STRString),
+	  % normalize_meta_string(STRString, NMSTRString, NMTypes),
 	  % format(user_output,
 	  %	 'NORM|~w|~w|~w|~s|~s|~w~n',
 	  %	 [CUI,LUI,SUI,STRString, NMSTRString, NMTypes]),
-	  atom_codes(NMSTR, NMSTRString),
+	  % atom_codes(NMSTR, NMSTRString),
 	  % Include the MRRANK score in the clinfo/13 term
-	  get_mrrank(SAB, TTY, Line, MRRank),
-	  NextLine = clinfo(NMSTR,MRRank,CUI,LUI,SUI,LineData,TS,STT,TTY,STR,SAB,CODE,NMTypes),
+	  % get_mrrank(SAB, TTY, Line, MRRank),
 	  % format(user_output, '~n~w~n', [NextLine]),
 	  ( CUI == CUI0 ->
 	    process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			    NumLinesNext, Interval, TotalLines,
-			    CUI0, LUI0, [NextLine|CLInfoLines0],
+			    CUI0, [NextLineTerm|CLInfoLines0],
 			    NormCountsIn, NormCountsOut,
 			    TSCountsIn, TSCountsOut,
 			    SyntaxCountsIn, SyntaxCountsOut)
@@ -357,7 +359,7 @@ process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			     SyntaxCountsIn, SyntaxCountsNext),			     
 	    process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			    NumLinesNext, Interval, TotalLines,
-			    CUI, LUI, [NextLine],
+			    CUI, [NextLineTerm],
 			    NormCountsNext, NormCountsOut,
 			    TSCountsNext, TSCountsOut,
 			    SyntaxCountsNext, SyntaxCountsOut)
@@ -874,6 +876,11 @@ write_syntax_counts([pref-PrefCount,synt-SyntCount], OutputStream) :-
 	flush_output(OutputStream).
 
 get_mrrank(SAB, TTY, Line, MRRank) :-
+	% MMSubSyn is the synthetic MetaMap Subsynonymy vocabulary,
+	% that is manually added to the local mrrank_VERSION.pl Prolog file
+	% by create_mrrank; that script gives NLMSubSyn an MRRANK of 0, simply because
+	% (1) No SubSyn string (by construction) occurs in any UMLS vocabulary, and
+	% (2) Each Sybsyn string is found only once in any CUI in the MMSubSyn vocabulary.
 	( mrrank(SAB, TTY, MRRank, _SUPPRESS) ->
 	  true
 	; control_value(mrrank_file, FileName),
