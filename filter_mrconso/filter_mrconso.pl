@@ -193,7 +193,7 @@ initialize_filter_mrconso :-
 	   initialize_db_access
 	 ; true
 	),
-	compile_mrrank_file,
+	% compile_mrrank_file,
 	!.
 initialize_filter_mrconso :-
 	format('~NERROR: initialize_filter_mrconso/0 failed.~n', []),
@@ -201,13 +201,13 @@ initialize_filter_mrconso :-
 	stop_filter_mrconso,
 	fail.
 
-compile_mrrank_file :-
-	( control_value(mrrank_file, FileName) ->
-	  compile(FileName)
-	; format(user_output, 'Must specify mrrank file with -R option.\n', []),
-	  flush_output(user_output),
-	  abort
-	).
+% compile_mrrank_file :-
+% 	( control_value(mrrank_file, FileName) ->
+% 	  compile(FileName)
+% 	; format(user_output, 'Must specify mrrank file with -R option.\n', []),
+% 	  flush_output(user_output),
+% 	  abort
+% 	).
 	
 
 stop_filter_mrconso :- close_all_streams.
@@ -258,23 +258,19 @@ OutputStream.  */
 
 process_input(InputStream, InputFile, TaggerServerStream, OutputStream,
 	      Interval, TotalLines,
-	      NormCounts, TSCounts, SyntaxCounts) :-
+	      NormCountsOut, TSCountsOut, SyntaxCountsOut) :-
 	fget_non_null_line(InputStream, Line0),
 	parse_line(Line0, CUI0, LineTerm),
-	% atom_codes(STR0, STR0String),
-	% normalize_meta_string(STR0String, NMSTRString, NMTypes0),
-	% format(user_output,
-	%        'NORM|~w|~w|~w|~s|~s|~w~n',
-	%        [CUI0,LUI0,SUI0,STR0String, NMSTRString, NMTypes0]),
-	% atom_codes(NMSTR0, NMSTRString),
-	% Include the MRRANK score in the clinfo/13 term
-	% get_mrrank(SAB0, TTY0, Line0, MRRank),
 	NumLines is 1,
+	NormCountsIn = [],
+	TSCountsIn = [p-0,s-0],
+	SyntaxCountsIn = [pref-0,synt-0],
 	process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 			NumLines, Interval, TotalLines,
-			CUI0, [LineTerm], [], NormCounts,
-			[p-0,s-0], TSCounts,
-			[pref-0,synt-0], SyntaxCounts).
+			CUI0, [LineTerm],
+			NormCountsIn, NormCountsOut,
+			TSCountsIn, TSCountsOut,
+			SyntaxCountsIn, SyntaxCountsOut).
 
 /* parse_line(+Line, -CUI, -LUI, -TS, -STT, -TTY, -STR, -SAB, -CODE)
 
@@ -285,23 +281,31 @@ parse_line(LineString, CUIAtom, LineTerm) :-
 	%	     [CLSString,_N,TSString,STTString,STRString,SABString,TTYString,CODEString]),
 	parse_record(LineString, "|",
 		     [CUIString,_LATString,TSString,LUIString,STTString,
-		      SUIString,_ISPREFString,_AUIString,_SAUIString,
+		      SUIString,_ISPREFString,AUIString,_SAUIString,
 		      _SCUIString,_SDUIString,SABString,TTYString,CODEString,
 		      STRString,_SRLString,_SUPPRESSString,_CVFString]),
-	atom_codes_list([LineAtom,TSAtom,STTAtom,SABAtom,TTYAtom,CODEAtom],
-			[LineString,TSString,STTString,SABString,TTYString,CODEString]),
-	atom_codes_list([CUIAtom,LUIAtom,SUIAtom],[CUIString,LUIString,SUIString]),
+	atom_codes_list([TSAtom,STTAtom,SABAtom,TTYAtom,CODEAtom],
+			[TSString,STTString,SABString,TTYString,CODEString]),
+	atom_codes_list([CUIAtom,LUIAtom,SUIAtom,AUIAtom],
+			[CUIString,LUIString,SUIString,AUIString]),
 	normalize_meta_string(STRString, NormSTRString, NMTypes),
 	atom_codes(STRAtom, STRString),
 	atom_codes(NormSTRAtom, NormSTRString),
-	get_mrrank(SABAtom, TTYAtom, LineString, MRRank),
-	LineTerm = clinfo(NormSTRAtom,MRRank,CUIAtom,LUIAtom,SUIAtom,LineAtom,
-			  TSAtom,STTAtom,TTYAtom,STRAtom,SABAtom,CODEAtom,NMTypes),
+	% get_mrrank(SABAtom, TTYAtom, LineString, MRRank),
+	line_term(NormSTRAtom,CUIAtom,SABAtom,LUIAtom,SUIAtom,AUIAtom,LineString,
+		  TSAtom,STTAtom,TTYAtom,STRAtom,CODEAtom,NMTypes,
+		  LineTerm),
 	!.
 parse_line(LineString, _CUIAtom, _LineTerm) :-
 	format('~NFatal error: Bad input ~s~n', [LineString]),
 	stop_filter_mrconso,
 	halt.
+
+% encapsulate the clinfo/13 structure
+line_term(NormSTRAtom,CUIAtom,SABAtom,LUIAtom,SUIAtom,AUIAtom,LineString,
+	  TSAtom,STTAtom,TTYAtom,STRAtom,CODEAtom,NMTypes,
+	  clinfo(NormSTRAtom,CUIAtom,SABAtom,LUIAtom,SUIAtom,AUIAtom,LineString,
+		 TSAtom,STTAtom,TTYAtom,STRAtom,CODEAtom,NMTypes)).
 
 /* process_cui_lui(+InputStream, +OutputStream, +CUI, +LUI, +CLInfoLines)
 
@@ -325,6 +329,7 @@ parse_line(LineString, _CUIAtom, _LineTerm) :-
    The information from the current line is saved for further processing.
 */
 
+
 process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 		NumLinesIn, Interval, TotalLines,
 		CUI0, CLInfoLines0,
@@ -343,6 +348,7 @@ process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 	  %	 'NORM|~w|~w|~w|~s|~s|~w~n',
 	  %	 [CUI,LUI,SUI,STRString, NMSTRString, NMTypes]),
 	  % atom_codes(NMSTR, NMSTRString),
+	  % MRRANK is no longer used because we 
 	  % Include the MRRANK score in the clinfo/13 term
 	  % get_mrrank(SAB, TTY, Line, MRRank),
 	  % format(user_output, '~n~w~n', [NextLine]),
@@ -374,11 +380,11 @@ process_cui_lui(InputStream, InputFile, TaggerServerStream, OutputStream,
 
 /* filter_and_write(+OutputStream, +CLInfoLines)
 
-filter_and_write/3 removes entries (clinfo/7 terms) from CLInfoLines
+filter_and_write/3 removes entries (clinfo/13 terms) from CLInfoLines
 according to several criteria:
   strings with the same normalized Meta string (NMSTR),
   strings with particular term types (unless 'X' is specified;
-  Note: this option is now obsolete, because we no longer do term-type filtering)
+  Note: this option is now obsolete, because we no longer do term-type filtering!
   strings with particular term status, and
   strings with complex syntax (several phrases rather than one)
 Every entry is written to OutputStream with an initial y or n
@@ -388,13 +394,22 @@ filter_and_write(TaggerServerStream, OutputStream,   CLInfoLines0,
 		 NormCountsIn,   NormCountsOut,
 		 TSCountsIn,     TSCountsOut,
 		 SyntaxCountsIn, SyntaxCountsOut) :-
-	% First, find the preferred concept name.
-	find_preferred(CLInfoLines0, Preferred),
-	% Preferred = clinfo(_NMSTR0,_MRRank,CUI0,_LineData0,_TS0,_STT0,_TTY0,STR0,_SAB0,_CODE0,_NMTypes0),
-	% atom_codes(StrAtom0, STR0),
-	% atom_codes(CUIAtom0, CUI0),
-	% format(user_output, 'PREFERRED: ~w|~w~n', [CUIAtom0,StrAtom0]),
-	% First, do term-status filtering
+	% First, find the CUI for this group of lines
+	CLInfoLines0 = [First|_],
+	line_term(_NMSTR,CUI,_SAG,_LUI,_SUI,_AUI,_LineData,
+		  _TS,_STT,_TTY,_STR,_CODE,_NMTypes,
+		  First),
+	% Next, find all the preferred names of the CUI.
+	find_all_preferred(CLInfoLines0, CUI, [], AllPreferred0),
+	sort(AllPreferred0, AllPreferred1),
+	length(AllPreferred0, AllPreferred0Count),
+	% format(user_output, '~w has ~d original preferred string(s)~n', [CUI,AllPreferred0Count]),
+	% filter out preferred names, keeping only one per SAB.
+	filter_nmstr_dups(AllPreferred1, OutputStream,_NCI, _NCN, _NE0, AllPreferred),
+	length(AllPreferred, AllPreferredCount),
+	format(user_output, '~w preferred string counts: ~d/~d~n',
+	       [CUI,AllPreferred0Count,AllPreferredCount]),
+	% Next, do term-status filtering
 	% ntss
 	filter_by_term_status(CLInfoLines0,  OutputStream,
 			      TSCountsIn,    TSCountsNext,
@@ -405,8 +420,13 @@ filter_and_write(TaggerServerStream, OutputStream,   CLInfoLines0,
 	% nnorm
 	sort(CLInfoLines1, CLInfoLines2),
 	% CLInfoLines2 = CLInfoLines1,
+	% filtering out duplicate strings is no longer done.
+	% This change was due to Sina Madani and Safa Fathiamini's concern
+	% that many strings in the NCI/CCN termgroup were filtered out.
 	filter_nmstr_dups(CLInfoLines2, OutputStream,
-			  NormCountsIn, NormCountsNext, NormExclusions0, CLInfoLines3),
+			   NormCountsIn, NormCountsNext, NormExclusions0, CLInfoLines3),
+	% NormExclusions0 = [],
+	% NormCountsNext = NormCountsIn,
 	( ( control_option(strict_filtering)
 	  ;  control_option(dump_syntax_only)
 	  ) ->
@@ -421,96 +441,177 @@ filter_and_write(TaggerServerStream, OutputStream,   CLInfoLines0,
 	% further filtering?
 	( control_option(dump_syntax_only) ->
 	  SyntaxCountsOut = SyntaxCountsNext
-	; restore_pref_concept(CLInfoLines4, Preferred, CLInfoLines5,
-			       TSCountsNext,     TSCountsOut,
-			       NormCountsNext,   NormCountsOut,
-			       SyntaxCountsNext, SyntaxCountsOut,
-			       TSExclusions0, NormExclusions0, SyntaxExclusions0,
-			       TSExclusions1, NormExclusions1, SyntaxExclusions1),
-
+	  % Find all excluded preferred terms, i.e., those that are NOT in CLInfoLines.
+	; find_excluded_preferred(AllPreferred, CLInfoLines4, ExcludedPreferred),
+	  restore_all_preferred(CLInfoLines4, ExcludedPreferred, CLInfoLines5,
+				TSCountsNext,     TSCountsOut,
+				NormCountsNext,   NormCountsOut,
+				SyntaxCountsNext, SyntaxCountsOut,
+				TSExclusions0, NormExclusions0, SyntaxExclusions0,
+				TSExclusions1, NormExclusions1, SyntaxExclusions1),
+	  sort(CLInfoLines5, CLInfoLines6), 
 	  write_exclusions(OutputStream, TSExclusions1, NormExclusions1, SyntaxExclusions1),
-	  write_clinfo_lines(CLInfoLines5, OutputStream)
+	  write_clinfo_lines(CLInfoLines6, OutputStream)
 	),
 	!.
 
 write_exclusions(OutputStream, TSExclusions, NormExclusions, SyntaxExclusions) :-
-	  write_term_status_exclusions(TSExclusions, OutputStream),
-	  write_normalization_exclusions(NormExclusions, OutputStream),
-	  write_syntax_exclusions(SyntaxExclusions, OutputStream).
+%	  write_term_status_exclusions(TSExclusions, OutputStream),
+%	  write_normalization_exclusions(NormExclusions, OutputStream),
+%	  write_syntax_exclusions(SyntaxExclusions, OutputStream).
+	write_exclusions(TSExclusions,     tss, OutputStream),
+	write_exclusions(NormExclusions,   norm, OutputStream),
+	write_exclusions(SyntaxExclusions, synt, OutputStream).
 
-write_term_status_exclusions([], _OutputStream).
-write_term_status_exclusions([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
-			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
-        format(OutputStream,'ntss|~a|~p|~a~n', [LineData,NMTypes,NMSTR]),
-	write_term_status_exclusions(Rest, OutputStream).
-
-write_normalization_exclusions([], _OutputStream).
-write_normalization_exclusions([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
-			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
-	format(OutputStream,'nnorm|~a|~p|~a~n', [LineData,NMTypes,NMSTR]),
-	write_normalization_exclusions(Rest, OutputStream).
-
-write_syntax_exclusions([], _OutputStream).
-write_syntax_exclusions([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
-			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
-	format(OutputStream, 'nsynt|~a|~p|~a~n', [LineData,NMTypes,NMSTR]),          
-	write_syntax_exclusions(Rest, OutputStream).
+write_exclusions([], _ExclusionType, _OutputStream).
+write_exclusions([FirstCLInfoTerm|RestCLInfoTerms], ExclusionType, OutputStream) :-
+	line_term(NMSTR,_CUI,_SAB,_LUI,_SUI,_AUI,LineData,
+		  _TS,_STT,_TTY,_STR,_CODE,NMTypes,
+		  FirstCLInfoTerm),	
+	format(OutputStream, 'n~a|~s|~p|~a~n', [ExclusionType,LineData,NMTypes,NMSTR]),
+	write_exclusions(RestCLInfoTerms, ExclusionType, OutputStream).
+	
+%%% write_term_status_exclusions([], _OutputStream).
+%%% write_term_status_exclusions([CLInfoLine|Rest], OutputStream) :-
+%%% 	line_term(NMSTR,_CUI,_LUI,_SUI,LineData,
+%%% 		  _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes,
+%%% 		  CLInfoLine),
+%%% 	format(OutputStream, 'ntss|~s|~p|~a~n', [LineData,NMTypes,NMSTR]),
+%%% 	write_term_status_exclusions(Rest, OutputStream).
+%%% 
+%%% write_normalization_exclusions([], _OutputStream).
+%%% write_normalization_exclusions([CLInfoLine|Rest], OutputStream) :-
+%%% 	line_term(NMSTR,_CUI,_LUI,_SUI,LineData,
+%%% 		  _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes,
+%%% 		  CLInfoLine),
+%%% 	format(OutputStream, 'nnorm|~s|~p|~a~n', [LineData,NMTypes,NMSTR]),
+%%% 	write_normalization_exclusions(Rest, OutputStream).
+%%% 
+%%% write_syntax_exclusions([], _OutputStream).
+%%% write_syntax_exclusions([CLInfoLine|Rest], OutputStream) :-
+%%% 	line_term(NMSTR,_CUI,_LUI,_SUI,LineData,
+%%% 		  _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes,
+%%% 		  CLInfoLine),
+%%% 	format(OutputStream, 'nsynt|~s|~p|~a~n', [LineData,NMTypes,NMSTR]),          
+%%% 	write_syntax_exclusions(Rest, OutputStream).
 
 % CLInfoLines is the list of remaining strings after term-status filtering,
 % lexical (normalization) filtering, and syntactic filtering.
-% If at least one string remains, i.e., CLInfoLines unifies with [H|T],
+% If at least one string remains (which is the case if CLInfoLines unifies with [H|T]),
 % but the preferred name was excluded i.e., \+ memberchk(Preferred, CLInfoLines3),
 % then restore the preferred concept.
 % Also delete it from whichever exclusion list it was in,
 % and update the counts accordingly.
-% If no concepts remain, don't restore anything!
-restore_pref_concept([], _Preferred, [],
-		     TSCounts,     TSCounts,
-		     NormCounts,   NormCounts,
-		     SyntaxCounts, SyntaxCounts,
-		     TSExclusions, NormExclusions, SyntaxExclusions,
-		     TSExclusions, NormExclusions, SyntaxExclusions).
-restore_pref_concept([H|T], Preferred, CLInfoLinesOut,
-		     TSCountsIn,     TSCountsOut,
-		     NormCountsIn,   NormCountsOut,
-		     SyntaxCountsIn, SyntaxCountsOut,
-		     TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
-		     TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut) :-
-	CLInfoLinesIn = [H|T],
-	Preferred = clinfo(NMSTR,_MRRank,CUI,LUI,SUI,_LineData,
-			   _TS,_STT,_TTY,STR,_SAB,_CODE,_NMTypes),
-	PrefTemplate = clinfo(NMSTR,_MRRank1,CUI,LUI,SUI,_LineData1,
-			      TS,STT,_TTY1,_STR1,_SAB1,_CODE1,_NMTypes1),
-	( preferred_TS_STT(TS, STT),
-	  % Strenghten the test to allow any clinfo/13 structure containing
-	  % * the original Preferred Name's NMSTR and preferred TS ('p' or 'P') and STT ('PF')
-	  % * a preferred TS ('p' or 'P'), and
-	  % * the preferred STT ('PF')
-	  % to count as a Preferred Name
-	  memberchk(PrefTemplate, CLInfoLinesIn) ->
-	  TSCountsOut         = TSCountsIn,
-	  NormCountsOut       = NormCountsIn,
-	  SyntaxCountsOut     = SyntaxCountsIn,
-	  TSExclusionsOut     = TSExclusionsIn,
-	  NormExclusionsOut   = NormExclusionsIn,
-	  SyntaxExclusionsOut = SyntaxExclusionsIn,
-	  CLInfoLinesOut      = CLInfoLinesIn
-	; update_syntax_count(pref, 1, SyntaxCountsIn, SyntaxCountsInOut),
-	  % put the preferred concept back into the CLInfoLines
-	  CLInfoLinesOut = [Preferred|CLInfoLinesIn],
-	  delete_pref_from_exclusions(PrefTemplate,
-				      TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
-				      TSCountsIn,      TSCountsOut,
-				      NormCountsIn,    NormCountsOut,
-				      SyntaxCountsInOut, SyntaxCountsOut,
-				      TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut,
-				      Reason),
-	  format(user_output,
-		 '~NRestored concept "~w|~w|~w|~w|" previously deleted because of ~w~n',
-		 [CUI,LUI,SUI,STR,Reason])
+
+% If no strings in this CUI remain, do not restore any of the preferred names.
+restore_all_preferred([], AllPreferred, [],
+		      TSCounts,     TSCounts,
+		      NormCounts,   NormCounts,
+		      SyntaxCounts, SyntaxCounts,
+		      TSExclusions, NormExclusions, SyntaxExclusions,
+		      TSExclusions, NormExclusions, SyntaxExclusions) :-
+	announce_no_restore(AllPreferred).
+% Some strings in the CUI remain, so restore the excluded preferred names.
+restore_all_preferred([H|T], ExcludedPreferred, CLInfoLinesOut,
+		      TSCountsIn,     TSCountsOut,
+		      NormCountsIn,   NormCountsOut,
+		      SyntaxCountsIn, SyntaxCountsOut,
+		      TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
+		      TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut) :-
+		CLInfoLinesIn = [H|T],
+		restore_all_preferred_aux(ExcludedPreferred, CLInfoLinesIn, CLInfoLinesOut,
+					  TSCountsIn,     TSCountsOut,
+					  NormCountsIn,   NormCountsOut,
+					  SyntaxCountsIn, SyntaxCountsOut,
+					  TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
+					  TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut).
+
+restore_all_preferred_aux([], CLInfoLines, CLInfoLines,
+			  TSCounts,     TSCounts,
+			  NormCounts,   NormCounts,
+			  SyntaxCounts, SyntaxCounts,
+			  TSExclusions, NormExclusions, SyntaxExclusions,
+			  TSExclusions, NormExclusions, SyntaxExclusions).
+restore_all_preferred_aux([FirstExcludedPreferred|RestExcludedPreferred],
+			  CLInfoLinesIn, CLInfoLinesOut,
+			  TSCountsIn,     TSCountsOut,
+			  NormCountsIn,   NormCountsOut,
+			  SyntaxCountsIn, SyntaxCountsOut,
+			  TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
+			  TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut) :-
+	restore_one_preferred(FirstExcludedPreferred,
+			      CLInfoLinesIn, CLInfoLinesNext,
+			      TSCountsIn,     TSCountsNext,
+			      NormCountsIn,   NormCountsNext,
+			      SyntaxCountsIn, SyntaxCountsNext,
+			      TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
+			      TSExclusionsNext, NormExclusionsNext, SyntaxExclusionsNext),
+	restore_all_preferred_aux(RestExcludedPreferred,
+				  CLInfoLinesNext, CLInfoLinesOut,
+				  TSCountsNext,     TSCountsOut,
+				  NormCountsNext,   NormCountsOut,
+				  SyntaxCountsNext, SyntaxCountsOut,
+				  TSExclusionsNext, NormExclusionsNext, SyntaxExclusionsNext,
+				  TSExclusionsOut, NormExclusionsOut, SyntaxExclusionsOut).
+
+restore_one_preferred(FirstExcludedPreferred,
+		      CLInfoLinesIn, CLInfoLinesNext,
+		      TSCountsIn,     TSCountsNext,
+		      NormCountsIn,   NormCountsNext,
+		      SyntaxCountsIn, SyntaxCountsNext,
+		      TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
+		      TSExclusionsNext, NormExclusionsNext, SyntaxExclusionsNext) :-
+	line_term(NMSTR,CUI,SAB,LUI,SUI,AUI,OrigLineData,
+		  _OrigTermStatus,STT,TTY,STR,CODE,NMTypes,
+		  FirstExcludedPreferred),
+	update_syntax_count(pref, 1, SyntaxCountsIn, SyntaxCountsInOut),
+	RestoredTermStatus = 'P',
+	% change '|p|' to '|P|' in the LineData
+	update_term_status(OrigLineData, RestoredLineData),
+	% RestoredPreferred is a copyh of FirstExcludedPreferred,
+	% other than that the Term Status is changed from "p" to "P"
+	line_term(NMSTR,CUI,SAB,LUI,SUI,AUI,RestoredLineData,
+		  RestoredTermStatus,STT,TTY,STR,CODE,NMTypes,
+		  RestoredPreferred),
+	% put the preferred concept back into the CLInfoLines
+	CLInfoLinesNext = [RestoredPreferred|CLInfoLinesIn],
+	% The first argument here must be FirstExcludedPreferred, and not RestoredPreferred,
+	% because we must search for a clinfo/13 term containing
+	% the original LineData with '|p|',
+	% and not a clinfo/13 term containing the updated LineData with '|P|'.
+	delete_pref_from_exclusions(FirstExcludedPreferred,
+				    TSExclusionsIn, NormExclusionsIn, SyntaxExclusionsIn,
+				    TSCountsIn,      TSCountsNext,
+				    NormCountsIn,    NormCountsNext,
+				    SyntaxCountsInOut, SyntaxCountsNext,
+				    TSExclusionsNext, NormExclusionsNext, SyntaxExclusionsNext,
+				    Reason),
+	format(user_output,
+	       '~NRestored "~s" previously deleted because of ~w~n', [OrigLineData,Reason]).
+
+
+announce_no_restore([]).
+announce_no_restore([FirstPreferred|RestPreferred]) :-
+	line_term(_NormSTRAtom,_CUIAtom,_SABAtom,_LUIAtom,_SUIAtom,_AUIAtom,LineString,
+		  _TSAtom,_STTAtom,_TTYAtom,_STRAtom,_CODEAtom,_NMTypes,
+		  FirstPreferred),
+	format(user_output,
+	       '~NDID NOT RESTORE "~s" because all concepts filtered out~n', [LineString]),
+	announce_no_restore(RestPreferred).
+
+% Find all excluded preferred terms, i.e., those that are NOT in CLInfoLines.
+find_excluded_preferred([], _CLInfoLines, []).
+find_excluded_preferred([FirstPreferred|RestPreferred], CLInfoLines, ExcludedPreferred) :-
+	( memberchk(FirstPreferred, CLInfoLines) ->
+	  ExcludedPreferred = RestExcludedPreferred
+	; ExcludedPreferred = [FirstPreferred|RestExcludedPreferred]
+	),
+	find_excluded_preferred(RestPreferred, CLInfoLines, RestExcludedPreferred).
+
+update_term_status(OrigLineData, RestoredLineData) :-
+	( append([Before,"|p|",After], OrigLineData) ->
+	  append([Before,"|P|",After], RestoredLineData)
+	; RestoredLineData = OrigLineData
 	).
 
 delete_pref_from_exclusions(Preferred,
@@ -520,8 +621,9 @@ delete_pref_from_exclusions(Preferred,
 			    SyntaxCountsIn,   SyntaxCountsOut,
 			    TSExclusionsOut,  NormExclusionsOut, SyntaxExclusionsOut,
 			    Reason) :-
-	Preferred = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
-			   TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
+	line_term(_NMSTR,_CUI,_SAB,_LUI,_SUI,_AUI,_LineData,
+		  TS,_STT,_TTY,_STR,_CODE,_NMTypes,
+		  Preferred),
 	  % Was the preferred concept excluded because of term status?
 	( selectchk(Preferred, TSExclusionsIn,  TSExclusionsOut) ->
 	  Reason = 'term status',
@@ -539,7 +641,8 @@ delete_pref_from_exclusions(Preferred,
 	; selectchk(Preferred, NormExclusionsIn, NormExclusionsOut) ->
 	  Reason = normalization,
 	  % Decrement all the appropriate normalization counts
-	  update_all_normalization_counts([NMTypes|NMTypes], -1, NormCountsIn, NormCountsOut),
+	  % update_all_normalization_counts([NMTypes|NMTypes], -1, NormCountsIn, NormCountsOut),
+	  NormCountsOut = NormCountsIn,
 	  % leave the term-status counts unchanged
 	  TSCountsOut         = TSCountsIn,
 	  % leave the syntax counts unchanged
@@ -563,20 +666,26 @@ delete_pref_from_exclusions(Preferred,
 	  NormExclusionsOut   = NormExclusionsIn
 	).
 
-find_preferred(RevCLInfoLines, Preferred) :-
-	rev(RevCLInfoLines,CLInfoLines),
-	( member(InfoLine, CLInfoLines),
-	  InfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
-			    TS,STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
-	  preferred_TS_STT(TS, STT),
-	  !,
-	  Preferred = InfoLine
-	; CLInfoLines = [FirstCLInfoLine|_],
-	  FirstCLInfoLine = clinfo(_NMSTR,_MRRank,CUI,_LUI,_SUI,_LineData,
-				   TS,STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
-	  format(user_output, '~NNo preferred form found for CUI ~w~n', [CUI]),
-	  Preferred = none
+% Strenghten the test to allow any clinfo/13 structure containing
+% * the original Preferred Name's NMSTR and preferred TS ('p' or 'P') and STT ('PF')
+% * a preferred TS ('p' or 'P'), and
+% * the preferred STT ('PF')
+% to count as a Preferred Name
+
+find_all_preferred([], CUI, Preferred, Preferred) :-
+	( Preferred \== [] ->
+	  true
+	; format(user_output, '~NNo preferred form found for CUI ~w~n', [CUI])
 	).
+find_all_preferred([FirstCLInfoLine|RestCLInfoLines], CUI, PreferredIn, PreferredOut) :-
+	  line_term(_NMSTR,CUI,_SAB,_LUI,_SUI,_AUI,_LineData,
+		    TS,STT,_TTY,_STR,_CODE,_NMTypes,
+		    FirstCLInfoLine),
+	  ( preferred_TS_STT(TS, STT) ->
+	    PreferredNext = [FirstCLInfoLine|PreferredIn]
+	  ; PreferredNext = PreferredIn
+	  ),
+	  find_all_preferred(RestCLInfoLines, CUI, PreferredNext, PreferredOut).
 
 preferred_TS_STT('P', 'PF').
 preferred_TS_STT(p,   'PF').
@@ -587,14 +696,17 @@ preferred_TS_STT(p,   'PF').
 
 filter_nmstr_dups/6.  See filter_and_write/1.  */
 
+% We now keep one normalized string per CUI and per SAB.
+
 filter_nmstr_dups([], _, NormCounts, NormCounts, [], []).
 filter_nmstr_dups([CLInfoLine|RestInfoLines], OutputStream, 
 		  NormCountsIn, NormCountsOut,
 		  [CLInfoLine|RestExcluded], FilteredRest) :-
 	nmstr_is_duplicate(RestInfoLines, CLInfoLine),
 	!,
-        CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
-			    _TS,_STT,_TTY,_STR,_SAB,_CODE,NMTypes),
+        line_term(_NMSTR,_CUI,_SAB,_LUI,_SUI,_AUI,_LineData,
+		  _TS,_STT,_TTY,_STR,_CODE,NMTypes,
+		  CLInfoLine),
 	announce_exclusion(RestInfoLines, CLInfoLine),
 	flush_output(user_output),
 	% format(user_output, 'DUPLICATE: ~a ~a ~a ~a~n', [STR,NMSTR,SAB,TTY]),
@@ -608,25 +720,27 @@ filter_nmstr_dups([CLInfoLine|RestInfoLines], OutputStream,
 	update_all_normalization_counts([NMTypes|NMTypes], 1, NormCountsIn, NormCountsNext),
 	filter_nmstr_dups(RestInfoLines, OutputStream,
 			  NormCountsNext, NormCountsOut, RestExcluded, FilteredRest).
+
 filter_nmstr_dups([First|Rest], OutputStream,
 		  NormCountsIn, NormCountsOut, Excluded, [First|FilteredRest]) :-
 	filter_nmstr_dups(Rest, OutputStream,
 			  NormCountsIn, NormCountsOut, Excluded, FilteredRest).
 
-
 announce_exclusion([ExcludingLine|_Rest], ExcludedLine) :-
-	ExcludingLine = clinfo(_NMSTR2,MRRank2,CUI2,LUI2,SUI2,_LineData2,
-			       _TS2,_STT2,TTY2,STR2,SAB2,_CODE2,_NMTypes2),
-	ExcludedLine  = clinfo(_NMSTR1,MRRank1,CUI1,LUI1,SUI1,_LineData1,
-			       _TS1,_STT1,TTY1,STR1,SAB1,_CODE1,_NMTypes1),
+	line_term(_NMSTR2,CUI2,SAB2,LUI2,SUI2,AUI2,_LineData2,
+		  _TS2,_STT2,TTY2,STR2,_CODE2,_NMTypes2,
+		  ExcludingLine),
+	line_term(_NMSTR1,CUI1,SAB1,LUI1,SUI1,AUI1,_LineData1,
+		  _TS1,_STT1,TTY1,STR1,_CODE1,_NMTypes1,
+		  ExcludedLine),
 	% XXX|187|NCI|AB|C0439208:L1224124:S1086283|g|>>|37|CHV|SY|C0439208:L1224124:S1086283|g
 	% Diagnostic output indicating that the Excluding string
 	% 187|NCI|AB|C0439208:L1224124:S1086283|g
 	% has excluded the Excluded string
 	% 37|CHV|SY|C0439208:L1224124:S1086283|g
 	format(user_output, 'XXX|~w|~w|~w|~w|~w|~s|~s|>>|~w|~w|~w|~w|~w|~s|~s~n',
-	       		    [MRRank2,SAB2,TTY2,CUI2,LUI2,SUI2,STR2,
-			     MRRank1,SAB1,TTY1,CUI1,LUI1,SUI1,STR1]).
+	       		    [SAB2,TTY2,CUI2,LUI2,SUI2,AUI2,STR2,
+			     SAB1,TTY1,CUI1,LUI1,SUI1,AUI1,STR1]).
 			     
 
 update_all_normalization_counts([], _Increment, NormCounts, NormCounts).
@@ -650,31 +764,53 @@ update_one_normalization_count([H|T], NormType, Increment, NormCountsNext) :-
 
 nmstr_is_duplicate/2 succeeds if NMSTR occurs in one of the CLInfoLines.  */
 
-% The MRRANK table contains the following fields:
-% Rank|SAB|TTY|Suppress
+%%% % This explanation is out of date, and refers to the former logic
+%%% % of keeping only one version of each normalized string, period.
+%%% % The MRRANK table contains the following fields:
+%%% % Rank|SAB|TTY|Suppress
+%%% % The clinfo/13 terms come in to nmstr_is_duplicate/2 sorted in increasing order by
+%%% % (1) normalized string (NMSTR), and then
+%%% % (2) MRRANK
+%%% % A clinfo/13 term should be excluded by normalization iff
+%%% % another clinfo/13 term with the same NMSTR has a higher MRRANK.
+%%% % Since all clinfo/13 terms with the same NMSTR will be adjacent,
+%%% % the exclusion logic is very simple:
+%%% % (1) If Line1 and Line2 have the same NMSTR,
+%%% %     because the clinfo/13 terms are sorted,
+%%% %     Line2's MRRANK will necessarily be higher than Line1's,
+%%% %     so exclude Line1. There is no need to compare the two MRRANKs.
+%%% % (2) Otherwise (if Line1 and Line2 have different NMSTRs),
+%%% %     Line1 should *not* be excluded, because there is no other clinfo/13 term
+%%% %     with the same NMSTR and a higher score,
+%%% %     so there's no need to recurse on the rest of the clinfo/13 terms!
 
+
+% The updated explanation of the logic of nmstr_is_duplicate:
 % The clinfo/13 terms come in to nmstr_is_duplicate/2 sorted in increasing order by
-% (1) normalized string (NMSTR), and then
-% (2) MRRANK
-% A clinfo/13 term should be excluded by normalization iff
-% another clinfo/13 term with the same NMSTR has a higher MRRANK.
+% (1) normalized string (NMSTR),
+% (2) CUI, and
+% (2) SAB
+% A clinfo/13 term should be excluded by normalization iff there exists
+% another clinfo/13 term with the same NMSTR in the same CUI and the same SAB.
 % Since all clinfo/13 terms with the same NMSTR will be adjacent,
 % the exclusion logic is very simple:
-% (1) If Line1 and Line2 have the same NMSTR,
-%     because the clinfo/13 terms are sorted,
-%     Line2's MRRANK will necessarily be higher than Line1's,
-%     so exclude Line1. There is no need to compare the two MRRANKs.
-% (2) Otherwise (if Line1 and Line2 have different NMSTRs),
+% (1) If Line1 and Line2 have the same NMSTR, CUI, and SAB, exclude Line1.
+% (2) Otherwise (if Line1 and Line2 have different NMSTRs, CUIs or SABs),
 %     Line1 should *not* be excluded, because there is no other clinfo/13 term
-%     with the same NMSTR and a higher score,
-%     so there's no need to recurse on the rest of the clinfo/13 terms!
+%     with the same NMSTR, CUI, and SAB.
+
+% We now want to keep only one version of each normalized string for each CUI and SAB.
 
 nmstr_is_duplicate([Line2|_RestLines], Line1) :-
-	Line1 = clinfo(NMSTR1,_MRRank1,_CUI1,_LUI1,_SUI1,_LineData1,
-		       _TS1,_STT1,_TTY1,_STR1,_SAB1,_CODE1,_NMTypes1),
-	Line2 = clinfo(NMSTR2,_MRRank2,_CUI2,_LUI2,_SUI2,_LineData2,
-		       _TS2,_STT2,_TTY2,_STR2,_SAB2,_CODE2,_NMTypes2),
-	NMSTR2 == NMSTR1.
+	line_term(NMSTR1,CUI1,SAB1,_LUI1,_SUI1,_AUI1,_LineData1,
+		  _TS1,_STT1,_TTY1,_STR1,_CODE1,_NMTypes1,
+		  Line1),
+	line_term(NMSTR2,CUI2,SAB2,_LUI2,_SUI2,_AUI2,_LineData2,
+		  _TS2,_STT2,_TTY2,_STR2,_CODE2,_NMTypes2,
+		  Line2),
+	NMSTR2 == NMSTR1,
+	CUI2 == CUI1,
+	SAB2 == SAB1.
 
 % filter_by_term_status(+CLInfoLines, +OutputStream, -FilteredCLInfoLines)
 % filters out and writes with "ntss" prefix lines whose Term Status is "s" or "p"
@@ -683,8 +819,9 @@ filter_by_term_status([], _OutputStream, TSCounts, TSCounts, [], []).
 filter_by_term_status([CLInfoLine|RestCLInfoLines], OutputStream,
 		      TSCountsIn, TSCountsOut,
 		      [CLInfoLine|RestExcluded], FilteredRest) :-
-	CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,_LineData,
-			    TS,_STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
+	line_term(_NMSTR,_CUI,_SAB,_LUI,_SUI,_AUI,_LineData,
+		  TS,_STT,_TTY,_STR,_CODE,_NMTypes,
+		  CLInfoLine),
 	excluded_term_status(TS),
 	!,
 	update_term_status_count(TS, 1, TSCountsIn, TSCountsNext),
@@ -727,8 +864,9 @@ filter_syntactically([], _TaggerServerStream, _OutputStream, SyntaxCounts, Synta
 filter_syntactically([CLInfoLine|Rest], TaggerServerStream, OutputStream,
 		     SyntaxCountsIn, SyntaxCountsOut,
 		     [CLInfoLine|RestExcluded], FilteredRest) :-
-	CLInfoLine = clinfo(NMSTR,_MRRank,CUI,_LUI,_SUI,_LineData,
-			    _TS,_STT,_TTY,_STR,SAB,CODE,_NMTypes),
+	line_term(NMSTR,CUI,SAB,_LUI,_SUI,_AUI,_LineData,
+		  _TS,_STT,_TTY,_STR,CODE,_NMTypes,
+		  CLInfoLine),
 	atom_codes(NMSTR, NMSTRString),
 	parse_it(NMSTRString, TaggerServerStream, minimal_syntax(Phrases)),
 	length(Phrases, MSUCount), % number of minimal syntactic units (i.e., phrases)
@@ -797,7 +935,7 @@ is_of_phrase([FirstItem,_NextItem|_]) :- % there must be something after 'of'
 % Try tagging and parsing five times, and quit if still unsuccessful.
 parse_it(NMSTR, TaggerServerStream, SyntacticAnalysis) :-
 	between(1, 5, _),
-	   tag_text(NMSTR, TaggerServerStream, TagList, _, _),
+	   tag_text(NMSTR, TaggerServerStream, _FullTagList, TagList, _),
 	   generate_syntactic_analysis_plus(NMSTR, TagList, SyntacticAnalysis, _Definitions),
 	!.
 parse_it(NMSTR, minimal_syntax([[]])) :-
@@ -822,10 +960,11 @@ write_clinfo_lines/2.  See filter_and_write/2.  */
 
 write_clinfo_lines([], _).
 write_clinfo_lines([CLInfoLine|Rest], OutputStream) :-
-	CLInfoLine = clinfo(_NMSTR,_MRRank,_CUI,_LUI,_SUI,LineData,
-			    _TS,_STT,_TTY,_STR,_SAB,_CODE,_NMTypes),
+	line_term(_NMSTR,_CUI,_SAB,_LUI,_SUI,_AUI,LineData,
+		  _TS,_STT,_TTY,_STR,_CODE,_NMTypes,
+		  CLInfoLine),
 	% y == "yes": the line survived filtering
-	format(OutputStream, 'y|~a~n', [LineData]),
+	format(OutputStream, 'y|~s~n', [LineData]),
 	flush_output(OutputStream),
 	write_clinfo_lines(Rest, OutputStream).
 
@@ -875,17 +1014,17 @@ write_syntax_counts([pref-PrefCount,synt-SyntCount], OutputStream) :-
 	format(OutputStream, '~Nis|~d|synt~n', [SyntCount]),
 	flush_output(OutputStream).
 
-get_mrrank(SAB, TTY, Line, MRRank) :-
-	% MMSubSyn is the synthetic MetaMap Subsynonymy vocabulary,
-	% that is manually added to the local mrrank_VERSION.pl Prolog file
-	% by create_mrrank; that script gives NLMSubSyn an MRRANK of 0, simply because
-	% (1) No SubSyn string (by construction) occurs in any UMLS vocabulary, and
-	% (2) Each Sybsyn string is found only once in any CUI in the MMSubSyn vocabulary.
-	( mrrank(SAB, TTY, MRRank, _SUPPRESS) ->
-	  true
-	; control_value(mrrank_file, FileName),
-	  format(user_output,
-		 '### ERROR: SAB/TTY ~w/~w in line~n~*c~s~n~*cnot defined in MRRANK file ~w.~n',
-		 [SAB,TTY,11,32,Line,11,32,FileName]),
-	  abort
-	).
+% get_mrrank(SAB, TTY, Line, MRRank) :-
+% 	% MMSubSyn is the synthetic MetaMap Subsynonymy vocabulary,
+% 	% that is manually added to the local mrrank_VERSION.pl Prolog file
+% 	% by create_mrrank; that script gives NLMSubSyn an MRRANK of 0, simply because
+% 	% (1) No SubSyn string (by construction) occurs in any UMLS vocabulary, and
+% 	% (2) Each Sybsyn string is found only once in any CUI in the MMSubSyn vocabulary.
+% 	( mrrank(SAB, TTY, MRRank, _SUPPRESS) ->
+% 	  true
+% 	; control_value(mrrank_file, FileName),
+% 	  format(user_output,
+% 		 '### ERROR: SAB/TTY ~w/~w in line~n~*c~s~n~*cnot defined in MRRANK file ~w.~n',
+% 		 [SAB,TTY,11,32,Line,11,32,FileName]),
+% 	  abort
+% 	).

@@ -10,7 +10,6 @@
 
 :- use_module(mm_tools_lib(mwi_utilities), [
 	compute_unique_filename/3,
-	parse_record/2,
 	normalize_meta_string/3
     ]).
 
@@ -326,7 +325,7 @@ write_all_pairs([Word1-Word2|RestWords], FilterStream) :-
 /* is_filtered_out(+WordList)
 
 is_filtered_out/1 succeeds if WordList begins with Word1, ends with Word2,
-and Word-Word2 is a member of WordPairs is true. */
+and Word1-Word2 is a member of WordPairs is true. */
 
 is_filtered_out(WordList) :-
 	WordList = [Word1String|_],
@@ -426,7 +425,7 @@ handle_CUIs(0, GenerateCUIs, CUIOutputStream, CUI0,
 	    _CurrentCUI, TermStatus, String, StringType, CUI) :-
 	% TermStatus P:  the LUI is the preferred LUI of the CUI.
 	% StringType PF: Preferred form of term
-	% if TermStatus is P and STT is PF,
+	% if TermStatus is P and String Type is PF,
 	% then the string represents the concept
 	% CUIOutputStream writes to concepts.gleaned
         ( ( TermStatus == "P",
