@@ -16,9 +16,9 @@ include $(SKR)/src/Makefile.include
 
 SPRUNTIME=sp-4.2.1
 SOFILES=c_nls_db.${SOEXT} db_access.${SOEXT} debug.${SOEXT} nls_signal.${SOEXT} \
-qp_lexicon.${SOEXT} qp_morph.${SOEXT} 
+qp_lexicon.${SOEXT} qp_morph.${SOEXT} lexicon db debug
 
-$(SPRUNTIME) :
+$(SPRUNTIME) : $(SKR_SRC_HOME)/$(SPRUNTIME)
 	ln -s $(SKR_SRC_HOME)/$(SPRUNTIME) $(SPRUNTIME)
 
 c_nls_db.${SOEXT} : $(SKR_SRC_HOME)/c_nls_db.${SOEXT}
@@ -30,12 +30,20 @@ db_access.${SOEXT} : $(SKR_SRC_HOME)/db_access.${SOEXT}
 debug.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
 	ln -s $(SKR_SRC_HOME)/debug.${SOEXT} debug.${SOEXT}
 
-nls_signal.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
+nls_signal.${SOEXT} : $(SKR_SRC_HOME)/nls_signal.${SOEXT} 
 	ln -s $(SKR_SRC_HOME)/nls_signal.${SOEXT} nls_signal.${SOEXT}
 
-qp_lexicon.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
+qp_lexicon.${SOEXT} : $(SKR_SRC_HOME)/qp_lexicon.${SOEXT} 
 	ln -s $(SKR_SRC_HOME)/qp_lexicon.${SOEXT} qp_lexicon.${SOEXT}
 
-qp_morph.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
+qp_morph.${SOEXT} : $(SKR_SRC_HOME)/qp_morph.${SOEXT} 
 	ln -s $(SKR_SRC_HOME)/qp_morph.${SOEXT} qp_morph.${SOEXT}
 
+lexicon : $(SKR_SRC_HOME)/lexicon
+	ln -s $(SKR_SRC_HOME)/lexicon lexicon
+
+debug : $(SKR_SRC_HOME)/debug
+	ln -s $(SKR_SRC_HOME)/debug debug
+
+db : $(SKR_SRC_HOME)/db
+	ln -s $(SKR_SRC_HOME)/db db
