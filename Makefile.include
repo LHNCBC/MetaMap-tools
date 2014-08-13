@@ -12,30 +12,28 @@
 # Use src makefile include for base variables.
 include $(SKR)/src/Makefile.include
 
-# link runtime files for testing compilations
+#
+# Copy sources to SKR/src and compile them there.
+#
+$(BINEXEC) : $(SKR)/src/$(BINEXEC) $(SKR)/src/$(APPNAME).pl
+	$(CP) $(SKR)/src/$(BINEXEC) $(BINEXEC)
 
-SPRUNTIME=sp-4.2.1
-SOFILES=c_nls_db.${SOEXT} db_access.${SOEXT} debug.${SOEXT} nls_signal.${SOEXT} \
-qp_lexicon.${SOEXT} qp_morph.${SOEXT} 
+$(SAVED_STATE) : $(SKR)/src/$(SAVED_STATE) 
+	$(CP) $(SKR)/src/$(SAVED_STATE) $(SAVED_STATE)
 
-$(SPRUNTIME) :
-	ln -s $(SKR_SRC_HOME)/$(SPRUNTIME) $(SPRUNTIME)
+$(SKR)/src/$(SAVED_STATE) : $(SKR)/src/$(APPNAME).pl $(SKR)/src/loader.$(APPNAME).pl
+	( cd $(SKR)/src && $(MAKE) A_APPNAME=$(APPNAME) $(SAVED_STATE))
 
-c_nls_db.${SOEXT} : $(SKR_SRC_HOME)/c_nls_db.${SOEXT}
-	ln -s $(SKR_SRC_HOME)/c_nls_db.${SOEXT} c_nls_db.${SOEXT}
+$(SKR)/src/$(BINEXEC) : $(SKR)/src/$(SAVED_STATE)
+	( cd $(SKR)/src && $(MAKE) A_APPNAME=$(APPNAME) $(BINEXEC))
 
-db_access.${SOEXT} : $(SKR_SRC_HOME)/db_access.${SOEXT} 
-	ln -s $(SKR_SRC_HOME)/db_access.${SOEXT} db_access.${SOEXT}
+$(SKR)/src/$(APPNAME).pl : $(APPNAME).pl
+	$(CP) $(APPNAME).pl $(SKR)/src/$(APPNAME).pl
 
-debug.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
-	ln -s $(SKR_SRC_HOME)/debug.${SOEXT} debug.${SOEXT}
+$(SKR)/src/loader.$(APPNAME).pl : loader.pl
+	$(CP) loader.pl $(SKR)/src/loader.$(APPNAME).pl
 
-nls_signal.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
-	ln -s $(SKR_SRC_HOME)/nls_signal.${SOEXT} nls_signal.${SOEXT}
-
-qp_lexicon.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
-	ln -s $(SKR_SRC_HOME)/qp_lexicon.${SOEXT} qp_lexicon.${SOEXT}
-
-qp_morph.${SOEXT} : $(SKR_SRC_HOME)/debug.${SOEXT} 
-	ln -s $(SKR_SRC_HOME)/qp_morph.${SOEXT} qp_morph.${SOEXT}
+clean :
+	rm -f $(BINEXEC) $(SAVED_STATE) $(SKR)/src/$(SAVED_STATE) $(SKR)/src/$(BINEXEC) \
+	      $(SKR)/src/$(APPNAME).pl $(SKR)/src/loader.$(APPNAME).pl
 
