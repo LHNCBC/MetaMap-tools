@@ -88,17 +88,16 @@
 parse_record/2 calls parse_record/3 with Delim "|" which splits String into
 a list of Fields using Delim as the field delimiter.  */
 
-parse_record(String,Fields) :-
-    parse_record(String,"|",Fields).
+parse_record(String, Fields) :-
+    parse_record(String, "|", Fields).
 
-parse_record([],_,[]) :-
-    !.
-parse_record(Line,Delim,[FirstField|RestFields]) :-
-    split_string(Line,Delim,FirstField,RestLine),
-    parse_record(RestLine,Delim,RestFields),
-    !.
-parse_record(Field,_,[Field]) :-
-    !.
+parse_record([], _, []) :- !.
+parse_record(Line, Delim, [FirstField|RestFields]) :-
+	split_string(Line, Delim, FirstField, RestLine),
+	parse_record(RestLine, Delim, RestFields),
+	!.
+parse_record(Field, _, [Field]) :-
+	!.
 
 
 /* normalize_meta_string(+String, -NormalizedMetaString)

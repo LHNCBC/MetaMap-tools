@@ -36,4 +36,3 @@ $(SKR)/src/loader.$(APPNAME).pl : loader.pl
 clean :
 	rm -f $(BINEXEC) $(SAVED_STATE) $(SKR)/src/$(SAVED_STATE) $(SKR)/src/$(BINEXEC) \
 	      $(SKR)/src/$(APPNAME).pl $(SKR)/src/loader.$(APPNAME).pl
-
