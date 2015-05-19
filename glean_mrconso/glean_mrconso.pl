@@ -55,6 +55,7 @@
     ]).
 
 :- use_module(skr_lib(sicstus_utils), [
+	concat_atom/2,
 	ttyflush/0
     ]).
 
@@ -195,15 +196,17 @@ process_input(InputStream, FilterStream,
 	read_filter_info(FilterStream, WordPairs),
 	close(FilterStream),
 	write_filter_info(WordPairs),
-	format(CUIOutputStream,'C.......|X~n', []),  % dummy entry for optimization
+	dummy_efficiency_CUI(DummyCUI, DuplicateIndicator),
+	concat_atom([DummyCUI, '|', DuplicateIndicator, '~n'], DummyLine),
+	format(CUIOutputStream, DummyLine, []),  % dummy entry for optimization
 	% retractall(current_cui(_)),
 	get_processing_parameters(FirstTermIsConcept, GenerateCUIs, GenerateStrings, GenerateWords),
 	now(Now),
-	process_input_1('C.......', FirstTermIsConcept, Now,
+	process_input_1(DummyCUI, DummyCUI, FirstTermIsConcept, Now,
 			GenerateCUIs, GenerateStrings, GenerateWords,
 			1, InputStream, WordOutputStream, SUIOutputStream, CUIOutputStream).
 
-process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
+process_input_1(CurrentCUI, DummyCUI, FirstTermIsConcept, StartTime,
 		GenerateCUIs, GenerateStrings, GenerateWords,
 		NumLinesProcessed,
 		InputStream, WordOutputStream, SUIOutputStream, CUIOutputStream) :-
@@ -217,8 +220,11 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
 	  % format(user_output, 'LINE ~d: ~w~n', [NumLinesProcessed, LineAtom]),
           split_string_completely(Line, "|",
 				  % [CUI0,_Language,TermStatus,_LUI,StringType,SUI,String|_]),
-				  [CUI0,_LAT,TS,_LUI,STT,SUI,_ISPREF,_AUI,_SAUI,_SCUI,_SDUI,
-				   _SAB,_TTY,_CODE,String,_SRL,_SUPPRESS,_CVF|_]),
+				  [CUI0,_LAT,TermStatusString,_LUI,StringTypeString,SUI,
+				   _ISPREF,_AUI,_SAUI,_SCUI,_SDUI,_SAB,_TTY,_CODE,
+				   String,_SRL,_SUPPRESS,_CVF|_]),
+	  atom_codes(TermStatusAtom, TermStatusString),
+	  atom_codes(StringTypeAtom, StringTypeString),
           normalize_meta_string(String, NormalizedString, _NMTypes),
 
 	  % SUIOutputStream writes to strings.gleaned
@@ -226,8 +232,8 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
 	  generate_string_output(GenerateStrings, SUIOutputStream, SUI, NormalizedString, String),
           % first_term_is_concept is a default option for glean_mrconso
 
-	  handle_CUIs(FirstTermIsConcept, GenerateCUIs, CUIOutputStream,
-		      CUI0, CurrentCUI, TS, String, STT, CUI),
+	  handle_CUIs(FirstTermIsConcept, GenerateCUIs, DummyCUI, CUIOutputStream,
+		      CUI0, CurrentCUI, TermStatusAtom, String, StringTypeAtom, CUI),
 
           tokenize_text_mm(NormalizedString, WordStrings),
           ( is_filtered_out(WordStrings) ->
@@ -236,10 +242,12 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
 	    true
           ; length(WordStrings,NWordStrings),
 	    % WordOutputStream is words.gleaned
-            write_words(GenerateWords, WordStrings,1,NWordStrings,SUI,CUI,WordOutputStream)
+	    determine_print_CUI(TermStatusAtom, StringTypeAtom, CUI, PrintCUI),
+            write_words(GenerateWords, WordStrings, 1, NWordStrings,
+			SUI, PrintCUI, WordOutputStream)
           ),
 	  NextNum is NumLinesProcessed + 1,
-	  process_input_1(CUI0, FirstTermIsConcept, StartTime,
+	  process_input_1(CUI0, DummyCUI, FirstTermIsConcept, StartTime,
 			  GenerateCUIs, GenerateStrings, GenerateWords,
 			  NextNum,
 			  InputStream, WordOutputStream, SUIOutputStream, CUIOutputStream)
@@ -247,6 +255,16 @@ process_input_1(CurrentCUI, FirstTermIsConcept, StartTime,
 	  abort
 	).
 
+% If the string from which the words are taken is the preferred name of the CUI,
+% write the CUI as "C......." instead of the real CUI.
+% This is for efficiency, so as not to duplicate the string
+% in the WIDE version of the first_words... tables.
+determine_print_CUI(TermStatusAtom, StringTypeAtom, CUI, PrintCUI) :-
+	( TermStatusAtom == 'P',
+	  StringTypeAtom == 'PF' ->
+	  PrintCUI = 'C.......'
+	; PrintCUI = CUI
+	).
 
 /* read_filter_info(+FilterStream)
 
@@ -339,19 +357,18 @@ is_filtered_out(WordList) :-
 write_words/7 write records of the form Word|I|N|SUI|CUI to WordOutputStream.
 N is the total number of Words to be written, and I is the current one.  */
 
-write_words(GenerateWords, WordStrings,1,NWordStrings,SUI,CUI,WordOutputStream) :-
+write_words(GenerateWords, WordStrings, 1, NWordStrings, SUI, CUI, WordOutputStream) :-
 	( GenerateWords =:= 1 ->
-	  write_words_aux(WordStrings,1,NWordStrings,SUI,CUI,WordOutputStream)
+	  write_words_aux(WordStrings, 1, NWordStrings, SUI, CUI, WordOutputStream)
 	; true
 	).
 	  
 
-write_words_aux([], _, _, _, _, _).
+write_words_aux([], _I, _N, _SUI, _CUI, _WordOutputStream).
 write_words_aux([Word|Rest], I, N, SUI, CUI, WordOutputStream) :-
 	format(WordOutputStream, '~d|~d|~s|~s|~s~n', [I,N,Word,SUI,CUI]),
 	J is I + 1,
 	write_words_aux(Rest, J, N, SUI, CUI, WordOutputStream).
-
 
 % do_housekeeping(+N, +StartTime, +NumLinesProcessed, +Line)
 % call maybe_atom_gc and announce partial result IFF NumLinesProcessed mod N == 0
@@ -407,34 +424,36 @@ generate_CUI(GenerateCUI, CUIOutputStream, CUI0, String) :-
 	; true
 	).
 
-handle_CUIs(1, GenerateCUIs, CUIOutputStream, CUI0,
-	    CurrentCUI, _TermStatus, String, _StringType, CUI) :-
+handle_CUIs(1, GenerateCUIs, DummyCUI, CUIOutputStream, CUI0,
+	    CurrentCUI, _TermStatusAtom, String, _StringTypeAtom, CUI) :-
 	( CUI0 == CurrentCUI ->
           CUI = CUI0
 	  % CUIOutputStream writes to concepts.gleaned
 	  % If this is the first line in mrcon.filtered for the given CUI,
 	  % then write the line to concepts.gleaned
         ; generate_CUI(GenerateCUIs, CUIOutputStream, CUI0, String),
-	  CUI = "C......."
+	  CUI = DummyCUI
 	  % retract(current_cui(_)),
 	  % assert(current_cui(CUI0))
         ).
 % This doesn't look like it ever gets called,
 % because first_term_is_concept is a default option that is not overridden
-handle_CUIs(0, GenerateCUIs, CUIOutputStream, CUI0,
-	    _CurrentCUI, TermStatus, String, StringType, CUI) :-
+handle_CUIs(0, GenerateCUIs, DummyCUI, CUIOutputStream, CUI0,
+	    _CurrentCUI, TermStatusAtom, String, StringTypeAtom, CUI) :-
 	% TermStatus P:  the LUI is the preferred LUI of the CUI.
 	% StringType PF: Preferred form of term
 	% if TermStatus is P and String Type is PF,
 	% then the string represents the concept
 	% CUIOutputStream writes to concepts.gleaned
-        ( ( TermStatus == "P",
-	    StringType == "PF"
+        ( ( TermStatusAtom == 'P',
+	    StringTypeAtom == 'PF'
 	  ) ->
 	  generate_CUI(GenerateCUIs, CUIOutputStream, CUI0, String),
-	  CUI = "C......."
+	  CUI = DummyCUI
 	; CUI = CUI0
 	).
+
+dummy_efficiency_CUI('C.......', 'X').
 
 % SUIOutputStream writes to strings.gleaned
 % strings.gleaned has the same number of lines as mrcon.filtered.

@@ -13,6 +13,11 @@ cd $TOOLS_DIR
 
 MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sed -e 's/[./]//g' | sort`
 
+COUNT=`echo $MAKE_DIRS | wc -w`
+
+echo making in $COUNT dirs: $MAKE_DIRS
+
+
 for APP_DIR in $MAKE_DIRS
 do
    cd $APP_DIR

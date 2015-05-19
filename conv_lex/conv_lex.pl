@@ -32,6 +32,10 @@
     This code is based on lcheckp.pl
 */
 
+:- module(conv_lex, [
+        go/0
+    ]).
+
 :- use_module(lexicon(qp_fm_lexrec), [
 	fm_lexical_record/4
    ]).

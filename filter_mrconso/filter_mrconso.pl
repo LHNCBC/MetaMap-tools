@@ -101,9 +101,9 @@
 	get_from_iargs/4
     ]).
 
-:- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
-    ]).
+% :- use_module(skr_lib(efficiency),[
+% 	maybe_atom_gc/3
+%     ]).
 
 
 :- use_module(skr_lib(nls_strings),[
