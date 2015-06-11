@@ -36,7 +36,7 @@
     ]).
 
 :- use_module(skr_lib(efficiency), [
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_system), [
@@ -210,13 +210,7 @@ process_text(Text) :-
 	atom_codes(Term, Text),
 	current_output(CurrentOutput),
 	flush_output(CurrentOutput),
-	maybe_atom_gc(DidGC,SpaceCollected),
-	( ( control_option(info),
-	    DidGC == yes
-	  ) ->
-	    format('Atom GC performed collecting ~d bytes.~n', [SpaceCollected])
-	; true
-	),
+	maybe_atom_gc(no, _DidGC, _SpaceCollected),
 	compute_and_write_variants(Term),
 	!.
 
@@ -256,13 +250,7 @@ split_categories_aux([First|Rest], [[First]|SplitRest]) :-
 
 compute_and_write_variants_2([], _Term).
 compute_and_write_variants_2([Categories|RestCategories], Term) :-
-	maybe_atom_gc(DidGC, SpaceCollected),
-	( ( control_option(info),
-	    DidGC == yes
-	   ) ->
-	    format('Atom GC performed collecting ~d bytes.~n', [SpaceCollected])
-	; true
-	),
+	maybe_atom_gc(no, _DidGC, _SpaceCollected),
 	GVCs = [gvc(v(Term,0,Categories,"",_,_),_,_)],
         % format(user_output, 'Augmenting ~q~n', [GVCs]),
 	augment_GVCs_with_variants(GVCs),

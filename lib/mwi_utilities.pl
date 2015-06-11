@@ -30,10 +30,6 @@
 	consult_tagged_text/5
    ]).
 
-:- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
-    ]).
-
 % :- use_module(skr_lib(generate_varinfo),[
 % 	generate_variant_info/2
 %     ]).
@@ -47,7 +43,8 @@
 
 :- use_module(skr_lib(nls_strings),[
 	concatenate_items_to_atom/2,
-	eliminate_multiple_meaning_designator_string/2,
+	% OBSOLETE!
+	% eliminate_multiple_meaning_designator_string/2,
 	eliminate_nos_string/2,
 	normalized_syntactic_uninvert_string/2,
 	replace_all_substrings/4,
@@ -232,7 +229,7 @@ metamap_tokenization:remove_possessives/2, and then rebuilds StrippedString. */
 
 strip_possessives(String,StrippedString) :-
     tokenize_text_utterly(String,Tokens),
-    remove_possessives(Tokens,StrippedTokens),
+    remove_possessives(Tokens, StrippedTokens),
     (Tokens==StrippedTokens ->
         StrippedString=String
     ;   append(StrippedTokens,StrippedString)
@@ -287,7 +284,7 @@ remove_possessives([Word,"'","s"],[Word]) :-
     is_ws_word(Word),
     !.
 remove_possessives([Word,"'","s",WhiteSpace|Rest],
-		   [Word,WhiteSpace|FilteredRest]) :-
+                   [Word,WhiteSpace|FilteredRest]) :-
     is_ws_word(Word),
     is_ws(WhiteSpace),
     !,
@@ -298,7 +295,7 @@ remove_possessives([Word,"'"],[Word]) :-
     ends_with_s(Word),
     !.
 remove_possessives([Word,"'",WhiteSpace|Rest],
-		   [Word,WhiteSpace|FilteredRest]) :-
+                   [Word,WhiteSpace|FilteredRest]) :-
     is_ws_word(Word),
     ends_with_s(Word),
     is_ws(WhiteSpace),
@@ -307,17 +304,18 @@ remove_possessives([Word,"'",WhiteSpace|Rest],
 remove_possessives([First|Rest],[First|FilteredRest]) :-
     remove_possessives(Rest,FilteredRest).
 
-normalize_string(String,NormString,NormTypes) :-
-    eliminate_multiple_meaning_designator_string(String,String1),
-    (String==String1 ->
-        NormTypes0=[]
-    ;   NormTypes0=[mult]
-    ),
-    eliminate_nos_string(String1,NormString),
-    (String1==NormString ->
-        NormTypes=NormTypes0
-    ;   append(NormTypes0,[nos],NormTypes)
-    ).
+
+normalize_string(String, NormString, NormTypes) :-
+	%     eliminate_multiple_meaning_designator_string(String,String1),
+	%     (String==String1 ->
+	%         NormTypes0=[]
+	%     ;   NormTypes0=[mult]
+	%     ),
+	eliminate_nos_string(String, NormString),
+	( String = NormString ->
+	  NormTypes = []
+	; NormTypes = [nos]
+	).
 
 
 % Announce how many lines have been processed every Interval lines
@@ -330,7 +328,6 @@ announce_lines(NumLines, Interval, TotalLines, InputFile) :-
 
 announce_lines_without_total(NumLines, Interval, InputFile) :-
 	( 0 is NumLines mod Interval ->
-	  maybe_atom_gc(_, _),
 	  format(user_output,
 		 '~NProcessed ~d lines of file ~w~n',
 		 [NumLines,InputFile])
@@ -343,7 +340,6 @@ announce_lines_with_total(NumLines, Interval, TotalLines, InputFile) :-
 		 '~NCOMPLETED ~d of ~w lines of file ~w~n',
 		 [NumLines,TotalLines,InputFile])
 	; 0 is NumLines mod Interval ->
-	  maybe_atom_gc(_, _),
 	  format(user_output,
 		 '~NProcessed ~d of ~w lines of file ~w~n',
 		 [NumLines,TotalLines,InputFile])

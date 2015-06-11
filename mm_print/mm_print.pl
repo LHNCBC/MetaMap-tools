@@ -74,7 +74,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2014AA),[
+:- use_module(skr_lib(semtype_translation_2015AA),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).
@@ -337,7 +337,8 @@ get_aas_term(InputStream, AAsTerm) :-
 	    Codes = Codes0
 	  ; Codes = [ThisCode|Codes0]
 	  ),
-	  replace_all_substrings(Codes, "\\", "\\\\", NewCodes),
+	  % replace_all_substrings(Codes, "\\", "\\\\", NewCodes),
+	  NewCodes = Codes,
 	  read_from_codes(NewCodes, AAsTerm),
 	  AAsTerm = aas(_) ->
 	  true
