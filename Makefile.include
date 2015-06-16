@@ -15,24 +15,24 @@ include $(SKR)/src/Makefile.include
 #
 # Copy sources to SKR/src and compile them there.
 #
-$(BINEXEC) : $(SKR)/src/$(BINEXEC) $(SKR)/src/$(APPNAME).pl
-	$(CP) $(SKR)/src/$(BINEXEC) $(BINEXEC)
+# $(BINEXEC) : $(SKR)/src/$(BINEXEC) $(SKR)/src/$(APPNAME).pl
+# 	$(CP) $(SKR)/src/$(BINEXEC) $(BINEXEC)
 
-$(SAVED_STATE) : $(SKR)/src/$(SAVED_STATE) 
-	$(CP) $(SKR)/src/$(SAVED_STATE) $(SAVED_STATE)
+# $(SAVED_STATE) : $(SKR)/src/$(SAVED_STATE) 
+# 	$(CP) $(SKR)/src/$(SAVED_STATE) $(SAVED_STATE)
 
-$(SKR)/src/$(SAVED_STATE) : $(SKR)/src/$(APPNAME).pl $(SKR)/src/loader.$(APPNAME).pl
-	( cd $(SKR)/src && $(MAKE) A_APPNAME=$(APPNAME) $(SAVED_STATE))
+# $(SKR)/src/$(SAVED_STATE) : $(SKR)/src/$(APPNAME).pl $(SKR)/src/loader.$(APPNAME).pl
+# 	( cd $(SKR)/src && $(MAKE) A_APPNAME=$(APPNAME) $(SAVED_STATE))
 
-$(SKR)/src/$(BINEXEC) : $(SKR)/src/$(SAVED_STATE)
-	( cd $(SKR)/src && $(MAKE) A_APPNAME=$(APPNAME) $(BINEXEC))
+# $(SKR)/src/$(BINEXEC) : $(SKR)/src/$(SAVED_STATE)
+# 	( cd $(SKR)/src && $(MAKE) A_APPNAME=$(APPNAME) $(BINEXEC))
 
-$(SKR)/src/$(APPNAME).pl : $(APPNAME).pl
-	$(CP) $(APPNAME).pl $(SKR)/src/$(APPNAME).pl
+# $(SKR)/src/$(APPNAME).pl : $(APPNAME).pl
+# 	$(CP) $(APPNAME).pl $(SKR)/src/$(APPNAME).pl
 
-$(SKR)/src/loader.$(APPNAME).pl : loader.pl
-	$(CP) loader.pl $(SKR)/src/loader.$(APPNAME).pl
+# $(SKR)/src/loader.$(APPNAME).pl : loader.pl
+# 	$(CP) loader.pl $(SKR)/src/loader.$(APPNAME).pl
 
-clean :
-	rm -f $(BINEXEC) $(SAVED_STATE) $(SKR)/src/$(SAVED_STATE) $(SKR)/src/$(BINEXEC) \
-	      $(SKR)/src/$(APPNAME).pl $(SKR)/src/loader.$(APPNAME).pl
+# clean :
+# 	rm -f $(BINEXEC) $(SAVED_STATE) $(SKR)/src/$(SAVED_STATE) $(SKR)/src/$(BINEXEC) \
+# 	      $(SKR)/src/$(APPNAME).pl $(SKR)/src/loader.$(APPNAME).pl
