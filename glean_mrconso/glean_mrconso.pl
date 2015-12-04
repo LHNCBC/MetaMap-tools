@@ -93,7 +93,7 @@ go(HaltOption) :-
 go(HaltOption,command_line(Options,Args)) :-
     reset_control_options(glean_mrconso),
     add_portray(portray_strings_double_quoted),
-    format('~ngglean_mrconso~n', []),
+    format('~nglean_mrconso~n', []),
     (initialize_glean_mrconso(Options,Args,InterpretedArgs) ->
         (glean_mrconso(InterpretedArgs); true)
     ;   usage
