@@ -176,7 +176,7 @@ read_and_process_lexrec(InputStream, OutputStream) :-
 
 maybe_announce_progress(NumLines, PWD, InputFile) :-
         ( NumLines rem 1000 =:= 0 ->
-          format(user_output, 'Processed ~d records of ~w/~w.~n', [NumLines,PWD,InputFile]),
+          format(user_output, 'Processed ~d records of ~w in ~w.~n', [NumLines,InputFile,PWD]),
           flush_output(user_output)
         ; true
         ).

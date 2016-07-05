@@ -37,9 +37,9 @@
 	default_release/1
     ]).
 
-:- use_module(skr_lib(negex), [
-	generate_negex_output/1
-    ]).
+% :- use_module(skr_lib(negex), [
+% 	generate_negex_output/1
+%     ]).
 
 :- use_module(skr_lib(nls_system), [
 	control_option/1,
@@ -74,9 +74,14 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2015AB),[
+:- use_module(skr_lib(semtype_translation_2016AA),[
 	expand_semtypes/2,
 	semtype_translation/2
+    ]).
+
+:- use_module(skr(skr_json),[
+	generate_and_print_json/2,
+	json_output_params/6
     ]).
 
 :- use_module(skr(skr_utilities),[
@@ -219,8 +224,8 @@ process_all_documents(InputStream, ArgsTerm, OutputStream) :-
 
 process_one_document(InputStream, OutputStream, PrevTerm, NextTerm) :-
 	get_header_terms(InputStream, PrevTerm, ArgsTerm, MMOAAsTerm, MMONegExTerm),
-	MMONegExTerm = neg_list(MMONegations),
-	generate_negex_output(MMONegations),
+	% MMONegExTerm = neg_list(MMONegations),
+	% generate_negex_output(MMONegations),
 	% Utterances are read in by line, and not by terms,
 	% so we must consume the next newline char.
 	get_code(InputStream, 10),
@@ -230,6 +235,7 @@ process_one_document(InputStream, OutputStream, PrevTerm, NextTerm) :-
         current_output(CurrentOutputStream),
         set_output(OutputStream),
 	generate_and_print_xml(AllMMO, OutputStream),
+	generate_and_print_json(AllMMO, OutputStream),
         set_output(CurrentOutputStream).
 
 % If we're at EOF, then quit; otherwise process a document, and recurse.
@@ -490,6 +496,9 @@ do_organize_semantic_types(OutputStream) :-
 
 print_utterance(_Utterance, _OutputStream) :-
 	xml_output_format(_XMLOutputFormat),
+	!.
+print_utterance(_Utterance, _OutputStream) :-
+	json_output_params(_JSONFormat, _StartIndent, _IndentInc, _Padding, _Space, _NewLine),
 	!.
 print_utterance(utterance(Label,String,_Phrases,_PosInfo,_ReplPos), OutputStream) :-
 	control_option(label_text_field_dump),
