@@ -15,7 +15,7 @@
    ]).
 
 :- use_module(lexicon(lex_access), [
-	initialize_lexicon/2,
+	% initialize_lexicon/2,
 	% is_a_form/1,
 	get_categories_for_form/2
     ]).
@@ -125,7 +125,7 @@ initialize_mm_variants(Options,Args,IArgs) :-
     !.
 
 initialize_mm_variants :-
-    initialize_lexicon(_,_),
+    % initialize_lexicon(_,_),
     initialize_metamap_variants(dynamic),
     initialize_db_access.
 

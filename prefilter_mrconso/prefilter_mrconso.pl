@@ -81,7 +81,7 @@ where Radiology and radiology are suppressed. */
     ]).
 
 :- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_strings),[
@@ -209,7 +209,7 @@ process_input(InputStream, OutputStream) :-
 	put_fact(saved,info,[CUI0,LUI0,[clinfo(Line0,CUI0,LUI0,SUI0,TS0,STT0,
 					       STR0,SAB0,TTY0,CODE0,SRL0,LCSTR0)]]),
 	repeat,
-	   maybe_atom_gc(_,_),
+	   maybe_atom_gc(2, _, _),
 	   ( erase_fact(saved,info,[CUI,LUI,CLInfoLines0]) ->
 	     process_cui_lui(InputStream,OutputStream,CUI,LUI,CLInfoLines0),
 	     fail

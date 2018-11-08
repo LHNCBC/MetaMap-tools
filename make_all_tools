@@ -38,7 +38,7 @@ do
    /bin/rm -f $PROGRAM $PROGRAM.sav $PROGRAM.BINARY.Linux $PROGRAM.sav $PROGRAM.BINARY.Linux
    echo running xref in directory $APP_DIR
    echo '################################################################'
-   echo y | SKRenv.14 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module; echo; echo UNDEF:; cat undef
+   echo y | SKRenv.16 spxref -R loader -i ~/sicstus.ini -x xref -u undef -w warning -m module; echo; echo UNDEF:; cat undef
    echo making in directory $TOOLS_DIR/$APP_DIR:
    COMMAND="linkSICStus $SRC_HOME -PC -O $PROGRAM.BINARY.Linux -T $PROGRAM.sav"
    echo $COMMAND

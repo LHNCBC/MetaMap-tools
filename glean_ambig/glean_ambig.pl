@@ -28,7 +28,7 @@
     ]).
 
 :- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_strings),[
@@ -161,7 +161,7 @@ process_input/6 reads lines from InputStream and writes to OutputStream and Supp
 process_input(InputStream, OutputStream, SuppOutputStream, InputFile, Interval, TotalLines) :-
 	fget_non_null_line(InputStream, Line0),
 	parse_line(Line0, CUI0, TS0, LUI0, SUI0, SAB0, TTY0, SUPPRESS0, LCString0),
-	maybe_atom_gc(_,_),
+	maybe_atom_gc(2, _, _),
 	SuppCaseNum is 0,
 	UnSuppCaseNum is 0,
 	NumLines is 1,
@@ -203,7 +203,7 @@ to OutputStream and SuppOutputStream. */
 process_case(InputStream, OutputStream, SuppOutputStream,
 	     InputFile, NumLinesIn, Interval, TotalLines,
 	     SuppCaseNumIn, UnSuppCaseNumIn, LCString0, FieldsList) :-
-	maybe_atom_gc(_,_),
+	maybe_atom_gc(2, _, _),
 	( fget_non_null_line(InputStream, Line) ->
 	  NumLinesNext is NumLinesIn + 1,
 	  announce_lines(NumLinesNext, Interval, TotalLines, InputFile),

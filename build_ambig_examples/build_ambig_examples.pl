@@ -33,7 +33,7 @@
     ]).
 
 :- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_strings),[
@@ -156,7 +156,7 @@ process_input(InputStream) :-
     parse_line(Line0,ID0,CUI0,_LUI0,SUI0,Name0),
     put_fact(saved,info,[ID0,[[CUI0,SUI0,Name0]]]),
     repeat,
-    maybe_atom_gc(_,_),
+    maybe_atom_gc(2, _, _),
     (erase_fact(saved,info,[ID,CSNs]) ->
         process_case(InputStream,ID,CSNs),
         fail
