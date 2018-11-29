@@ -39,7 +39,7 @@
     ]).
 
 :- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_strings),[
@@ -160,7 +160,7 @@ process_input(InputStream, OutputStream, InputFile, Interval, TotalLines) :-
 	parse_line(Line0, CUI0, SUI0, STR0, SAB0, TTY0),
 	% put_fact(saved,info, [CUI0, [cuiinfo(CUI0,SUI0,Line0,STR0,SAB0,TTY0)]]),
 	CUIInfo = cuiinfo(CUI0,SUI0,Line0,STR0,SAB0,TTY0),
-	maybe_atom_gc(_, _),
+	maybe_atom_gc(2, _, _),
 	process_cui(InputStream, OutputStream, InputFile,
 		    NumLines, Interval, TotalLines,
 		    CUI0, [CUIInfo]).

@@ -27,7 +27,7 @@
     ]).
 
 :- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_io),[
@@ -167,7 +167,7 @@ specified tokenizations of the text (pipe-separated).  */
 
 process_all(InputStream,OutputStream) :-
     repeat,
-    maybe_atom_gc(_,_),
+    maybe_atom_gc(2, _, _),
     (fget_line(InputStream,Text) ->
         process_text(Text,OutputStream),
         fail

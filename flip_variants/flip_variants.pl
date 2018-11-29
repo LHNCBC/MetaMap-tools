@@ -32,7 +32,7 @@
     ]).
 
 :- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_io),[
@@ -154,7 +154,7 @@ OutputStream.  */
 
 process_input(InputStream,OutputStream) :-
     repeat,
-    maybe_atom_gc(_,_),
+    maybe_atom_gc(2, _, _),
     (fget_line(InputStream,Line) ->
         process_line(OutputStream,Line),
         fail

@@ -59,11 +59,12 @@
 :- use_module(skr_lib(nls_strings), [
 	normalized_syntactic_uninvert_string/2,
 	replace_all_substrings/4,
+	split_atom_completely/3,
 	split_string_completely/3
     ]).
 
 :- use_module(skr_lib(efficiency),[
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_text), [
@@ -74,7 +75,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2016AA),[
+:- use_module(skr_lib(semtype_translation_2018AB),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).
@@ -147,6 +148,7 @@ go(HaltOption) :-
 
 go(HaltOption,command_line(Options,Args)) :-
     reset_control_options(mm_print),
+    close_all_streams,
     (initialize_mm_print(Options,Args,InterpretedArgs) ->
         (mm_print(InterpretedArgs); true)
     ;   usage
@@ -214,36 +216,40 @@ process_all_documents(InputStream, ArgsTerm, OutputStream) :-
 	% 1 means outer XML header/footer
 	xml_header_footer_print_setting(1, XMLSetting, PrintSetting),
 	conditionally_print_xml_header(PrintSetting, OutputStream),
-	process_one_document(InputStream, OutputStream, ArgsTerm, NextTerm),
+	DocNum = 1,
+	process_one_document(InputStream, OutputStream, DocNum, ArgsTerm, NextTerm),
 	% NextTerm will be either
 	% * end_of_file, if we've read to EOF, or
 	% * 'EOT', if the input file was generated with -E
 	% * the args/2 term from the MMO for the next document, if we're not at EOF.
-	process_rest_documents(InputStream, NextTerm, OutputStream),
+	NextNum is DocNum + 1,
+	process_rest_documents(InputStream, NextNum, NextTerm, OutputStream),
 	conditionally_print_xml_footer(PrintSetting, XMLSetting, OutputStream).
 
-process_one_document(InputStream, OutputStream, PrevTerm, NextTerm) :-
+process_one_document(InputStream, OutputStream, DocNum, PrevTerm, NextTerm) :-
 	get_header_terms(InputStream, PrevTerm, ArgsTerm, MMOAAsTerm, MMONegExTerm),
 	% MMONegExTerm = neg_list(MMONegations),
 	% generate_negex_output(MMONegations),
 	% Utterances are read in by line, and not by terms,
 	% so we must consume the next newline char.
 	get_code(InputStream, 10),
-	get_all_utterances(InputStream, OutputStream, Utterances, NextTerm),
+	get_all_utterances(InputStream, OutputStream, DocNum, Utterances, NextTerm),
 	convert_all_utterances_to_orig_MMO(Utterances, OriginalUtteranceMMO, []),
 	AllMMO = [ArgsTerm,MMOAAsTerm,MMONegExTerm|OriginalUtteranceMMO],
         current_output(CurrentOutputStream),
         set_output(OutputStream),
+% 	mmi:process_citation(foo, AllMMO, user_output),
 	generate_and_print_xml(AllMMO, OutputStream),
 	generate_and_print_json(AllMMO, OutputStream),
         set_output(CurrentOutputStream).
 
 % If we're at EOF, then quit; otherwise process a document, and recurse.
-process_rest_documents(InputStream, PrevTerm, OutputStream) :-
+process_rest_documents(InputStream, DocNum, PrevTerm, OutputStream) :-
 	( PrevTerm == end_of_file ->
 	  true
-	; process_one_document(InputStream, OutputStream, PrevTerm, NextTerm),
-	  process_rest_documents(InputStream, NextTerm, OutputStream)
+	; process_one_document(InputStream, OutputStream, DocNum, PrevTerm, NextTerm),
+	  NextNum is DocNum + 1,
+	  process_rest_documents(InputStream, NextNum, NextTerm, OutputStream)
 	).
 
 % convert from terms of the form
@@ -270,8 +276,11 @@ convert_all_phrases_to_orig_MMO([FirstPhrase|RestPhrases],
 	FirstOrigPhrase = phrase(Text,Syntax,PhrasePosInfo,ReplPos),
 	convert_all_phrases_to_orig_MMO(RestPhrases, RestOrigPhrases, RestOrigMMO).
 
-get_all_utterances(InputStream, OutputStream, [Utterance|RestUtterances], NextTerm) :-
+get_all_utterances(InputStream, OutputStream, PMIDNum, [Utterance|RestUtterances], NextTerm) :-
 	get_one_utterance(InputStream, OutputStream, Utterance),
+	Utterance = utterance(ID, _, _, _, _),
+	split_atom_completely(ID, '.', [PMID|_]),
+	format('PMID ~d: ~p~n', [PMIDNum, PMID]),
 	get_rest_utterances(InputStream, OutputStream, RestUtterances, NextTerm).
 
 get_rest_utterances(InputStream, OutputStream, Utterances, NextTerm) :-
@@ -366,7 +375,7 @@ get_negex_term(InputStream, NegExTerm) :-
 % 	filter_utterances(InputStream, OutputStream).
 
 get_one_utterance(InputStream, OutputStream, Utterance) :-
-	maybe_atom_gc(_,_),
+	maybe_atom_gc(2, _, _),
 	get_utterance(InputStream, _Label, Utterance),
 	( Utterance = utterance(_Label,_String,_Phrases,_PosInfo,_ReplPos) ->
 	  print_utterance(Utterance, OutputStream),
@@ -498,7 +507,8 @@ print_utterance(_Utterance, _OutputStream) :-
 	xml_output_format(_XMLOutputFormat),
 	!.
 print_utterance(_Utterance, _OutputStream) :-
-	json_output_params(_JSONFormat, _StartIndent, _IndentInc, _Padding, _Space, _NewLine),
+	json_output_params(JSONFormat, _StartIndent, _IndentInc, _Padding, _Space, _NewLine),
+	JSONFormat \== '',
 	!.
 print_utterance(utterance(Label,String,_Phrases,_PosInfo,_ReplPos), OutputStream) :-
 	control_option(label_text_field_dump),
@@ -512,7 +522,7 @@ print_utterance(utterance(Label,String,Phrases0,_PosInfo,_ReplPos), OutputStream
 	do_alnum_filter(Phrases0, Phrases),
 	do_mapping_summary_dump_1(OutputStream, Label, String),
 	print_phrases(Phrases, String, Label, OutputStream),
-	do_mapping_summary_dump_2(OutputStream),
+%	do_mapping_summary_dump_2(OutputStream),
 	do_organize_semantic_types(Phrases, OutputStream).
 
 do_filter_out_01(Phrases0) :-
@@ -564,7 +574,7 @@ do_alnum_filter(Phrases0, Phrases) :-
 
 do_mapping_summary_dump_1(OutputStream, Label, String) :-
 	( control_option(mapping_summary_dump) ->
-	  format(OutputStream, '~p|0|0|0|~s~n', [Label,String])
+	  format(OutputStream, '~p|UTTERANCE|~s~n', [Label,String])
 	; true
 	).
 
@@ -608,7 +618,14 @@ filter_alnum_phrases([_First|Rest],FilteredRest) :-
     !,
     filter_alnum_phrases(Rest,FilteredRest).
 
-print_phrases([],_,_,_).
+print_phrases([],_,_,OutputStream) :- format(OutputStream, '~n',[]).
+print_phrases([Phrase|Rest],String,Label,OutputStream) :-
+    control_option(mapping_summary_dump),
+    !,
+    Phrase = phrase(Text,Syntax,_Candidates,Mappings,_PosInfo,_ReplPos),
+    format(OutputStream, '~p|PHRASE|~s~n', [Label,Text]),
+    print_mapping_summary(Mappings,Label,String,Syntax,OutputStream),
+    print_phrases(Rest,String,Label,OutputStream).
 print_phrases([Phrase|Rest],String,Label,OutputStream) :-
     control_option(not_in_lex_dump),
     !,
@@ -676,12 +693,6 @@ print_phrases([Phrase|Rest],String,Label,OutputStream) :-
     !,
     Phrase = phrase(_Text,Syntax,Candidates,_Mappings,_PosInfo,_ReplPos),
     print_candidate_text(Candidates,Label,Syntax,OutputStream),
-    print_phrases(Rest,String,Label,OutputStream).
-print_phrases([Phrase|Rest],String,Label,OutputStream) :-
-    control_option(mapping_summary_dump),
-    !,
-    Phrase = phrase(_Text,Syntax,_Candidates,Mappings,_PosInfo,_ReplPos),
-    print_mapping_summary(Mappings,Label,String,Syntax,OutputStream),
     print_phrases(Rest,String,Label,OutputStream).
 print_phrases([Phrase|Rest],String,Label,OutputStream) :-
     control_option(mapping_text_dump),
@@ -1203,14 +1214,15 @@ for each mapping in Mappings using print_mapping_summary/7. */
 %print_mapping_summary([],Label,String,_Syntax,OutputStream) :-
 %    format(OutputStream,'~p|0|0|0|~s|~n',[Label,String]),
 %    !.
-print_mapping_summary(Mappings0,Label,String,Syntax,OutputStream) :-
-    length(Mappings0,N),
-    (control_option(first_mappings_only) ->
-	Mappings0=[First|_],
-	Mappings=[First]
-    ;   Mappings=Mappings0
-    ),
-    print_mapping_summary(Mappings,1,N,Label,String,Syntax,OutputStream).
+print_mapping_summary(MappingsTerm,Label,String,Syntax,OutputStream) :-
+	MappingsTerm = mappings(MappingsList),
+	length(MappingsList,N),
+	(control_option(first_mappings_only) ->
+	    MappingsList=[First|_],
+	    Mappings=[First]
+	;   Mappings=MappingsList
+	),
+	print_mapping_summary(Mappings,1,N,Label,String,Syntax,OutputStream).
 
 
 print_mapping_summary([],_,_,_,_,_,_) :-
@@ -1225,10 +1237,10 @@ print_mapping_summary([map(NegScore,Candidates)|Rest],I,N,Label,String,Syntax,
 %format(OutputStream,'~n~p~n',[Candidates]),
 %    format(OutputStream,'~p|~d|~d|~d|~d|~2f|',
 %	   [Label,I,N,Score,NConcepts,PhraseCoverage]),
-    format(OutputStream,'~p|~d|~d|~d|',
-	   [Label,I,N,Score]),
-    print_candidate_concepts(Candidates,OutputStream),
-    format(OutputStream,'~n',[]),
+%    format(OutputStream,'~p|~d|~d|~d|',
+%	   [Label,I,N,Score]),
+    print_candidate_concepts(Candidates,Label,I,N,Score,OutputStream),
+%    format(OutputStream,'~n',[]),
     NewI is I + 1,
     print_mapping_summary(Rest,NewI,N,Label,String,Syntax,OutputStream).
 print_mapping_summary(Mappings,_,_,Label,String,_,_) :-
@@ -1271,34 +1283,32 @@ add_coverages([I|Rest],SumIn,Sum) :-
 
 print_candidate_concepts/4 prints candidate concepts to OutputStream.  */
 
-print_candidate_concepts([],_).
-print_candidate_concepts([ev(_,CUI,MetaTerm,MetaConcept,_,SemTypes,_,_,_,_Sources,_PosInfo)|Rest],
+print_candidate_concepts([],_Label,_I,_N,_Score,_Stream).
+print_candidate_concepts([ev(_NegValue,CUI,MetaTerm,MetaConcept,_MetaWords,SemTypes,
+			     _MatchMap,_InvolvesHead,_IsOverMatch,
+			     _Sources,PosInfo,_Status,_Negated)|Rest],
+			 Label,I,N,Score,
 			 OutputStream) :-
     control_option(semantic_types),
     !,
-    (control_option(show_cuis) ->
-	(control_option(show_preferred_names_only) ->
-	    format(OutputStream,'~p:~p ~p',[CUI,MetaConcept,SemTypes])
-	;   (MetaTerm == MetaConcept ->
-		format(OutputStream,'~p:~p ~p',[CUI,MetaConcept,SemTypes])
-	    ;   format(OutputStream,'~p:~p (~p) ~p',[CUI,MetaTerm,MetaConcept,
-						     SemTypes])
-	    )
-	)
-    ;   (control_option(show_preferred_names_only) ->
-	    format(OutputStream,'~p ~p',[MetaConcept,SemTypes])
-	;   (MetaTerm == MetaConcept ->
-		format(OutputStream,'~p ~p',[MetaConcept,SemTypes])
-	    ;   format(OutputStream,'~p (~p) ~p',[MetaTerm,MetaConcept,
-						  SemTypes])
-	    )
-	)
+    ( control_option(show_cuis) ->
+      format(OutputStream,'~p|~p|~d|~d|~p|~p|~p|~p|~p~n',
+	     [Label,I,N,Score,CUI,MetaTerm,MetaConcept,SemTypes,PosInfo])
     ),
-    (Rest == [] ->
-	true
-    ;   format(OutputStream,' AND ',[])
-    ),
-    print_candidate_concepts(Rest,OutputStream).
+%    ;   (control_option(show_preferred_names_only) ->
+%	    format(OutputStream,'~p ~p',[MetaConcept,SemTypes])
+%	;   (Metaterm == MetaConcept ->
+%		Format(OutputStream,'~p ~p',[MetaConcept,SemTypes])
+%	    ;   format(OutputStream,'~p (~p) ~p',[MetaTerm,MetaConcept,
+%						  SemTypes])
+%	    )
+%	)
+%     (Rest == [] ->
+% 	true
+%     ;   format(OutputStream,' AND ',[])
+%     ),
+    print_candidate_concepts(Rest,Label,I,N,Score,OutputStream).
+
 print_candidate_concepts([ev(_,CUI,MetaTerm,MetaConcept,_,_SemTypes,_,_,_,_Sources,_PosInfo)
 			 |Rest],OutputStream) :-
     \+control_option(semantic_types),

@@ -63,21 +63,21 @@
 	parse_command_line/1,
 	pwd/1,
 	set_control_values/2,
-	toggle_control_options/1,
-	update_command_line/5
+	toggle_control_options/1
+	% update_command_line/5
    ]).
 
-:- use_module(library(codesio), [
-	write_to_codes/2
-    ]).
+% :- use_module(library(codesio), [
+% 	write_to_codes/2
+%     ]).
 
 :- use_module(library(lists), [
 	append/2
     ]).
 
-:- use_module(library(lists3), [
-	substitute/4
-    ]).
+% :- use_module(library(lists3), [
+% 	substitute/4
+%     ]).
 
 
 usage :- format(user_output, 'conv_lex ASCIILexicon PrologFile~n', []).

@@ -56,9 +56,9 @@
 	initialize_db_access/0
     ]).
 
-:- use_module(lexicon(lex_access),[
-	initialize_lexicon/2
-    ]).
+% :- use_module(lexicon(lex_access),[
+% 	initialize_lexicon/2
+%     ]).
 
 :- use_module(tagger(tagger_access),[
 	tag_text/5
@@ -189,7 +189,7 @@ initialize_filter_mrconso :-
 	(( control_option(strict_filtering)
 	 ; control_option(dump_syntax_only)
 	 ) ->
-	   initialize_lexicon(_,_),
+	   % initialize_lexicon(_,_),
 	   initialize_db_access
 	 ; true
 	),

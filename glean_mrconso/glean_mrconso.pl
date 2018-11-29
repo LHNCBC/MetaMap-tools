@@ -47,7 +47,7 @@
     ]).
 
 :- use_module(skr_lib(efficiency), [
-	maybe_atom_gc/2
+	maybe_atom_gc/3
     ]).
 
 :- use_module(skr_lib(nls_io), [
@@ -375,7 +375,7 @@ write_words_aux([Word|Rest], I, N, SUI, CUI, WordOutputStream) :-
 do_housekeeping(N, StartTime, NumLinesProcessed, Line) :-
 	( 0 is NumLinesProcessed mod N ->
 	  % format(user_output, 'maybe_atom_gc(~d)~n', [NumLinesProcessed]),
-	  maybe_atom_gc(_,_),
+	  maybe_atom_gc(2, _, _),
 	  now(Now),
 	  TimeDiff is Now - StartTime,
 	  format(user_output, '~N~d...~d...~s~n', [NumLinesProcessed, TimeDiff, Line]),
