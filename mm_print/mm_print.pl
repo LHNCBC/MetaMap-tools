@@ -75,7 +75,7 @@
 	first_n_or_less/3
     ]).
 
-:- use_module(skr_lib(semtype_translation_2018AB),[
+:- use_module(skr_lib(semtype_translation_2020AA),[
 	expand_semtypes/2,
 	semtype_translation/2
     ]).
@@ -241,6 +241,8 @@ process_one_document(InputStream, OutputStream, DocNum, PrevTerm, NextTerm) :-
 % 	mmi:process_citation(foo, AllMMO, user_output),
 	generate_and_print_xml(AllMMO, OutputStream),
 	generate_and_print_json(AllMMO, OutputStream),
+	format(OutputStream, '~n', []),
+	flush_output(OutputStream),
         set_output(CurrentOutputStream).
 
 % If we're at EOF, then quit; otherwise process a document, and recurse.
@@ -1734,4 +1736,5 @@ print_evaluations([CandidateTerm|Rest], OutputStream) :-
 	; true
 	),
 	format(OutputStream, '~n', []),
+	% flush_output(OutputStream),
 	print_evaluations(Rest, OutputStream).
