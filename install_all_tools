@@ -1,6 +1,6 @@
 #!/bin/sh
 
-ARCHITECTURE=`uname`
+# ARCHITECTURE=`uname`
 TOOLS_DIR=$NLSTOOLS
 
 for FILE in */*.sav

@@ -216,6 +216,22 @@ process_input_1(CurrentCUI, DummyCUI, FirstTermIsConcept, StartTime,
 	  true
 	; fget_line(InputStream, Line) ->
 	  do_housekeeping(1000, StartTime, NumLinesProcessed, Line),
+
+	  process_line(Line, CurrentCUI, CUI0, NumLinesProcessed, FirstTermIsConcept,
+		       WordOutputStream, SUIOutputStream, CUIOutputStream,
+		       GenerateWords, GenerateStrings, GenerateCUIs, DummyCUI, NextNum),
+
+	  process_input_1(CUI0, DummyCUI, FirstTermIsConcept, StartTime,
+			  GenerateCUIs, GenerateStrings, GenerateWords,
+			  NextNum,
+			  InputStream, WordOutputStream, SUIOutputStream, CUIOutputStream)
+	; format(user_output, 'ERROR: could not get line.~n', []),
+	  abort
+	).
+
+process_line(Line, CurrentCUI, CUI0, NumLinesProcessed, FirstTermIsConcept,
+	     WordOutputStream, SUIOutputStream, CUIOutputStream,
+	     GenerateWords, GenerateStrings, GenerateCUIs, DummyCUI, NextNum) :-
 	  % atom_codes(LineAtom, Line),
 	  % format(user_output, 'LINE ~d: ~w~n', [NumLinesProcessed, LineAtom]),
           split_string_completely(Line, "|",
@@ -226,7 +242,7 @@ process_input_1(CurrentCUI, DummyCUI, FirstTermIsConcept, StartTime,
 	  atom_codes(TermStatusAtom, TermStatusString),
 	  atom_codes(StringTypeAtom, StringTypeString),
           normalize_meta_string(String, NormalizedString, _NMTypes),
-
+	  % format(user_error, "STR:~s|~s~n", [String, NormalizedString]),
 	  % SUIOutputStream writes to strings.gleaned
 	  % strings.gleaned has the same number of lines as mrcon.filtered.
 	  generate_string_output(GenerateStrings, SUIOutputStream, SUI, NormalizedString, String),
@@ -246,14 +262,8 @@ process_input_1(CurrentCUI, DummyCUI, FirstTermIsConcept, StartTime,
             write_words(GenerateWords, WordStrings, 1, NWordStrings,
 			SUI, PrintCUI, WordOutputStream)
           ),
-	  NextNum is NumLinesProcessed + 1,
-	  process_input_1(CUI0, DummyCUI, FirstTermIsConcept, StartTime,
-			  GenerateCUIs, GenerateStrings, GenerateWords,
-			  NextNum,
-			  InputStream, WordOutputStream, SUIOutputStream, CUIOutputStream)
-	; format(user_output, 'ERROR: could not get line.~n', []),
-	  abort
-	).
+	  NextNum is NumLinesProcessed + 1.
+
 
 % If the string from which the words are taken is the preferred name of the CUI,
 % write the CUI as "C......." instead of the real CUI.
@@ -366,9 +376,14 @@ write_words(GenerateWords, WordStrings, 1, NWordStrings, SUI, CUI, WordOutputStr
 
 write_words_aux([], _I, _N, _SUI, _CUI, _WordOutputStream).
 write_words_aux([Word|Rest], I, N, SUI, CUI, WordOutputStream) :-
-	format(WordOutputStream, '~d|~d|~s|~s|~s~n', [I,N,Word,SUI,CUI]),
-	J is I + 1,
-	write_words_aux(Rest, J, N, SUI, CUI, WordOutputStream).
+    %( I is 1,
+    %  N is 2
+    %  -> format(user_error, '~d|~d|~s|~s|~s~n', [I,N,Word,SUI,CUI])
+    %  ; true
+    %),
+    format(WordOutputStream, '~d|~d|~s|~s|~s~n', [I,N,Word,SUI,CUI]),
+    J is I + 1,
+    write_words_aux(Rest, J, N, SUI, CUI, WordOutputStream).
 
 % do_housekeeping(+N, +StartTime, +NumLinesProcessed, +Line)
 % call maybe_atom_gc and announce partial result IFF NumLinesProcessed mod N == 0
