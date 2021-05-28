@@ -21,6 +21,7 @@
 
 :- use_module(metamap(metamap_tokenization),[
 	ends_with_s/1,
+	is_punct_or_ws/1,
 	is_ws/1,
 	is_ws_word/1,
 	tokenize_text_utterly/2
@@ -286,7 +287,7 @@ remove_possessives([Word,"'","s"],[Word]) :-
 remove_possessives([Word,"'","s",WhiteSpace|Rest],
                    [Word,WhiteSpace|FilteredRest]) :-
     is_ws_word(Word),
-    is_ws(WhiteSpace),
+    is_punct_or_ws(WhiteSpace),
     !,
     remove_possessives(Rest,FilteredRest).
 % plural possessives
@@ -298,7 +299,7 @@ remove_possessives([Word,"'",WhiteSpace|Rest],
                    [Word,WhiteSpace|FilteredRest]) :-
     is_ws_word(Word),
     ends_with_s(Word),
-    is_ws(WhiteSpace),
+    is_punct_or_ws(WhiteSpace),
     !,
     remove_possessives(Rest,FilteredRest).
 remove_possessives([First|Rest],[First|FilteredRest]) :-

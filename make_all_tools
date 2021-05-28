@@ -1,6 +1,6 @@
 #!/bin/sh
 
-ARCHITECTURE=`uname`
+# ARCHITECTURE=`uname`
 
 SRC_HOME=""
 if [ $# -gt 0 ] 
@@ -22,7 +22,12 @@ fi
 
 cd $TOOLS_DIR
 
-MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sed -e 's/[./]//g' | sort`
+# MAKE_DIRS=`find . -name loader.pl | sed -e 's/loader.pl//' | sed -e 's/[./]//g' | sort`
+# We no longer use the original Prolog versions of
+# build_ambig_examples, extract_mrconso_sources, flip_variants,
+# glean_ambig, mm_tokenizer, or prefilter_mrconso
+
+MAKE_DIRS="conv_lex filter_mrconso glean_mrconso mm_print mm_variants"
 
 COUNT=`echo $MAKE_DIRS | wc -w`
 

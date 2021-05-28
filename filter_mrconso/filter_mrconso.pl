@@ -938,8 +938,8 @@ parse_it(NMSTR, TaggerServerStream, SyntacticAnalysis) :-
 	   tag_text(NMSTR, TaggerServerStream, _FullTagList, TagList, _),
 	   generate_syntactic_analysis_plus(NMSTR, TagList, SyntacticAnalysis, _Definitions),
 	!.
-parse_it(NMSTR, minimal_syntax([[]])) :-
-	format('~NError: Cannot parse ~a after 5 attempts~n', [NMSTR]),
+parse_it(NMSTR, _TaggerServeerStream, minimal_syntax([[]])) :-
+	format('~NError: Cannot parse "~s" after 5 attempts~n', [NMSTR]),
 	ttyflush,
 	halt.
 
